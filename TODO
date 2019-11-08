@@ -1,0 +1,3 @@
+* Implement Doxygen-style comments, and include doxygen in the project.
+* Have a structure for specifying the reasons for which to have a film in the
+  database, including a list of default ones.
