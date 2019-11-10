@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 
+#include "Download.hpp"
 #include "Film.hpp"
 
 void parse_param(int argc, char* argv[], std::vector<std::string> &switches, std::vector<std::string> &parameters){
@@ -27,6 +28,7 @@ int main(int argc, char* argv[]){
   parse_param(argc, argv, switches, parameters);
   std::cout << "Switches: " << switches.size() << ", Parameters: " << parameters.size() << std::endl;
 
-  Film film;
+  Download downloader(true);
+  downloader.Get("https://geohot.com/");
   return 0;
 }

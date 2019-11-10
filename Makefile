@@ -2,7 +2,7 @@
 # Con ello, viene GLUT (ligGL). Ambas hay que linkarlas.
 
 CPPFLAGS = -Iinclude
-LDFLAGS = -Llib
+LDFLAGS = -Llib -lcurl
 
 build:
 	rm -f pfdb;
