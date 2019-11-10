@@ -68,7 +68,11 @@ private:
   /*
    * Personal information.
    */
-   unsigned int personal_rating;     // Out of 10, 1 decimal place.
-   std::string personal_comment;
-   std::vector<std::string> reasons; // For having the film in the database.
+  unsigned int personal_rating;     // Out of 10, 1 decimal place.
+  std::string personal_comment;
+  std::vector<std::string> reasons; // For having the film in the database.
+
+public:
+  Film();
+  ~Film();
 };

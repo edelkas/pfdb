@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 
+#include "Film.hpp"
+
 void parse_param(int argc, char* argv[], std::vector<std::string> &switches, std::vector<std::string> &parameters){
   for (int i = 0; i < argc; i++) {
     if (argv[i][0] == '-') {
@@ -24,5 +26,7 @@ int main(int argc, char* argv[]){
   std::vector<std::string> parameters;
   parse_param(argc, argv, switches, parameters);
   std::cout << "Switches: " << switches.size() << ", Parameters: " << parameters.size() << std::endl;
+
+  Film film;
   return 0;
 }
