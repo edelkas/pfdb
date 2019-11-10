@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include "DateTime.hpp"
-#include "Website.hpp"
+#include "Website.cpp"
 
 typedef std::unordered_map<std::string, std::string> hash;
 typedef std::unordered_map<std::string, std::string> numHash;
@@ -55,12 +55,14 @@ private:
   std::vector<std::string> languages;
 
   /*
+   * Dates saved in UNIX time.
+   *
    * Standard dates:
    * - Added:   When the film was added to the database. Should be only one.
    * - Updated: When the information of the film was last updated from the web.
    * - Seen:    When the film was seen. Could be multiple times.
    */
-  std::unordered_map<std::string, std::vector<DateTime>> dates;
+  std::unordered_map<std::string, std::vector<int>> dates;
 
   std::string color;                 // B&W, Color.
   std::string certification;         // USA rating: PG, R, ...
