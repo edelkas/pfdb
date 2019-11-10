@@ -16,6 +16,7 @@ Download::~Download() {
 }
 
 int Download::Get(const char* url){
+  curl = curl_easy_init();                  // Initialize CURL easy interface
   if (!curl) {
     std::cout << "Error: CURL didn't initialize properly." << std::endl;
     return 1;
