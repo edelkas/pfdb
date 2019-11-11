@@ -30,5 +30,6 @@ int main(int argc, char* argv[]){
 
   Download downloader(true);
   downloader.Get("https://geohot.com/");
+  downloader.Print();
   return 0;
 }
