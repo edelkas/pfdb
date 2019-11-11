@@ -11,7 +11,7 @@
  *
  * This class is a singleton, only one instance can be created.
  */
-class Download
+class Downloader
 {
 private:
   CURL *curl;                  // CURL handle
@@ -20,16 +20,17 @@ private:
   std::string buffer;          // Result of the transfer
   bool safe;                   // Perform safety checks
 public:
-  Download(bool safety);
-  ~Download();
-  int Get(const char* url);
-  inline void Print() { std::cout << buffer << std::endl; }
+  Downloader(bool safety);
+  ~Downloader();
+  const std::string& Get(const char* url);
+  inline const std::string& Retrieve() const { return buffer; }
+  inline void Print() const { std::cout << buffer << std::endl; }
 
   /**
    * Singleton: Remove possibility of duplicating object.
    */
-  Download(const Download&) = delete;            // Remove copy constructor
-  Download& operator=(const Download&) = delete; // Remove asignment operator
+  Downloader(const Downloader&) = delete;            // Remove copy constructor
+  Downloader& operator=(const Downloader&) = delete; // Remove asignment operator
 private:
   int InitCurl();
   static size_t Write(char *data, size_t size, size_t nmemb, std::string *result);

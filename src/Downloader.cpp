@@ -1,16 +1,16 @@
 #include <iostream>
-#include "Download.hpp"
+#include "Downloader.hpp"
 
-Download::Download(bool safety) : safe(safety), error(""), buffer(""), res(CURLE_OK) {
+Downloader::Downloader(bool safety) : safe(safety), error(""), buffer(""), res(CURLE_OK) {
   curl_global_init(CURL_GLOBAL_DEFAULT);    // Initialize CURL global functionality
-  Download::InitCurl();
+  Downloader::InitCurl();
 }
 
-Download::~Download() {
+Downloader::~Downloader() {
   curl_global_cleanup();                    // Perform CURL global cleaup
 }
 
-int Download::InitCurl(){
+int Downloader::InitCurl(){
   /* Try to initialize CURL easy interface */
   curl = curl_easy_init();
   if (!curl) {
@@ -41,16 +41,16 @@ int Download::InitCurl(){
   return 0;
 }
 
-int Download::Get(const char* url){
+const std::string& Downloader::Get(const char* url){
   curl_easy_setopt(curl, CURLOPT_URL, url); // Set URL
   res = curl_easy_perform(curl);            // Perform GET method
   if (res != CURLE_OK) {
     std::cout << "Error: CURL GET request wasn't successful." << std::endl;
     std::cout << curl_easy_strerror(res) << std::endl;
-    return 1;
+    buffer = "";
   }
   curl_easy_cleanup(curl);                  // Perform cleanup
-  return 0;
+  return buffer;
 }
 
 /**
@@ -61,7 +61,7 @@ int Download::Get(const char* url){
  * @param Number of chunks of data
  * @param Cumulative source where data is being stored
  */
-size_t Download::Write(char *data, size_t size, size_t nmemb, std::string *result){
+size_t Downloader::Write(char *data, size_t size, size_t nmemb, std::string *result){
   if (result == NULL) return 0;
   result->append(data, size * nmemb);
   return size * nmemb;
