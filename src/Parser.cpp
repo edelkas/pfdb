@@ -18,13 +18,14 @@ Parser::~Parser() {
 }
 
 void Parser::Parse(const char* data) {
-  buffer = data;
+  /* Parse HTML document and create node tree */
   myhtml_parse(tree, MyENCODING_UTF_8, data, strlen(data));
-}
 
-void Parser::Print() const {
+  /* Store result */
   mycore_string_raw_t str = {0};
   myhtml_serialization_tree_buffer(myhtml_tree_get_document(tree), &str);
-  std::cout << str.data << std::endl;
+  buffer = str.data;
+
+  /* Release resources */
   mycore_string_raw_destroy(&str, false);
 }

@@ -29,8 +29,8 @@ int main(int argc, char* argv[]){
   parse_param(argc, argv, switches, parameters);
   std::cout << "Switches: " << switches.size() << ", Parameters: " << parameters.size() << std::endl;
 
-  Downloader downloader(true);
-  Parser parser;
+  Downloader downloader(true); // Initialize the downloader
+  Parser parser;               // Initialize the parser
   std::string result = downloader.Get("https://geohot.com/");
   parser.Parse(result.c_str());
   parser.Print();
