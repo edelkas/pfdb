@@ -18,6 +18,7 @@ Parser::~Parser() {
 }
 
 void Parser::Parse(const char* data) {
+  buffer = data;
   myhtml_parse(tree, MyENCODING_UTF_8, data, strlen(data));
 }
 
