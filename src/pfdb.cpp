@@ -31,8 +31,9 @@ int main(int argc, char* argv[]){
 
   Downloader downloader(true); // Initialize the downloader
   Parser parser;               // Initialize the parser
-  std::string result = downloader.Get("https://geohot.com/");
+  std::string result = downloader.Get("https://www.elmundo.es/");
   parser.Parse(result.c_str());
-  parser.Print();
+  //parser.Print();
+  parser.Title();
   return 0;
 }
