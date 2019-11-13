@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <iostream>
 #include <curl/curl.h>
 
 #define SETOPT(x,e) x;if(res!=CURLE_OK){std::cout<<e<<std::endl<<error<<std::endl;}
@@ -22,7 +23,7 @@ private:
 public:
   Downloader(bool safety);
   ~Downloader();
-  const std::string& Get(const char* url);
+  const std::string& Get(std::string url);
   inline const std::string& Retrieve() const { return buffer; }
   inline void Print() const { std::cout << buffer << std::endl; }
 

@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include "DateTime.hpp"
-#include "Website.hpp"
+#include "Net.hpp"
 
 typedef std::unordered_map<std::string, std::string> hash;
 typedef std::unordered_map<std::string, std::string> numHash;

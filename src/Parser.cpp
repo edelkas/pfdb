@@ -57,6 +57,10 @@ std::vector<Node> Node::Search(SearchType type, const char* search, const char* 
   return nodes;
 }
 
+const std::string Node::Attribute(const char *key) const {
+  return myhtml_attribute_value(myhtml_attribute_by_key(node, key, strlen(key)), NULL);
+}
+
 const std::string Node::Content() const {
   mycore_string_raw_t str = {0};
   myhtml_serialization(node, &str);
@@ -112,7 +116,7 @@ void Parser::Title(){
   //myhtml_collection_t *result = myhtml_get_nodes_by_attribute_key(tree, NULL, NULL, "data-ue-u", 9, NULL);
   NodeSet result = Root().Search(V, "name", "twitter:card");
 
-  std::cout << result[0].Content() << std::endl;
+  std::cout << result[0].Attribute("content") << std::endl;
 
   /*Node n(result->list[0]);
   std::cout << n.Content() << std::endl;*/

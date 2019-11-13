@@ -41,15 +41,15 @@ int Downloader::InitCurl(){
   return 0;
 }
 
-const std::string& Downloader::Get(const char* url){
-  curl_easy_setopt(curl, CURLOPT_URL, url); // Set URL
-  res = curl_easy_perform(curl);            // Perform GET method
+const std::string& Downloader::Get(std::string url){
+  curl_easy_setopt(curl, CURLOPT_URL, url.c_str()); // Set URL
+  res = curl_easy_perform(curl);                    // Perform GET method
   if (res != CURLE_OK) {
     std::cout << "Error: CURL GET request wasn't successful." << std::endl;
     std::cout << curl_easy_strerror(res) << std::endl;
     buffer = "";
   }
-  curl_easy_cleanup(curl);                  // Perform cleanup
+  curl_easy_cleanup(curl);                          // Perform cleanup
   return buffer;
 }
 

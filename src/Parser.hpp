@@ -33,6 +33,7 @@ public:
   std::vector<Node> Search(SearchType type, const char* search, const char* value = "") const;
 
   /* Manipulating nodes */
+  const std::string Attribute(const char* key) const;
   const std::string Content() const;
 };
 
