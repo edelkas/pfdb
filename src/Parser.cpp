@@ -8,6 +8,12 @@ Node::Node(myhtml_tree_node_t *node) : node(node) {
 }
 
 Node::~Node() {
+  // TODO: When the Node is COPIED, and the previous copy is deleted, the underlying
+  // node is freed by this destructor, and so the new Node points to an invalid node.
+  // This causes a segmentation fault. Solve this.
+  // Idea: Use a shared pointer, so that the destructor is only called when all
+  // copies have been deleted.
+
   /* Release resources */
   myhtml_node_free(node);
 }
@@ -17,19 +23,32 @@ Node::Node(const Node& n) {
 }
 
 std::vector<Node> Node::Children() const {
-  // TODO: Maybe counting children first and then reserving the required space
-  // in the vector to avoid resizing would be beneficial?
-  // However, the only member of Node is a pointer, so moving it around isn't
+  // TODO: Is counting children first and then reserving the required space
+  // in the vector to avoid resizing beneficial?
+  // After all, the only member of Node is a pointer, so moving it around isn't
   // that big a deal.
-  std::vector<Node> children;
+
+  // Note: Maybe instead of counting, we could use the last_children method
+  // and use that as a comparison to detect when we reach it.
+
+  /* Count children */
   int count = 0;
   myhtml_tree_node_t *n = myhtml_node_child(node);
   while (n != NULL && count < 1000) { // TODO: Make hardcoded limit flexible
-    children.emplace_back(n);
-    n = myhtml_node_next(n);
     count++;
+    n = myhtml_node_next(n);
   }
 
+  /* Reserve a vector and populate with children */
+  std::vector<Node> children;
+  children.reserve(count);
+  int i = 0;
+  n = myhtml_node_child(node);
+  while (n != NULL && i < count) {
+    children.emplace_back(n);
+    n = myhtml_node_next(n);
+    i++;
+  }
   return children;
 }
 

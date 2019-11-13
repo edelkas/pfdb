@@ -14,4 +14,5 @@ public:
 
   const std::string Url(UrlType type, std::string token) const;
   const std::string ParseTitle(std::string id);
+  bool Test() const;
 };

@@ -17,7 +17,9 @@ const std::string FilmAffinity::Url(UrlType type, std::string token) const {
 
 const std::string FilmAffinity::ParseTitle(std::string id) {
   Parse(Url(Movie, id));
-  std::string title = parser.Root().Search(V, "id", "main-title")[0].Content();
+  std::string title = parser.Root().Search(V, "id", "main-title")[0].Children()[1].Children()[0].Content();
   std::cout << title << std::endl;
   return title;
 }
+
+bool FilmAffinity::Test() const { }
