@@ -23,7 +23,7 @@ private:
 public:
   Downloader(bool safety);
   ~Downloader();
-  const std::string& Get(std::string url);
+  const std::string& Get(const std::string& url);
   inline const std::string& Retrieve() const { return buffer; }
   inline void Print() const { std::cout << buffer << std::endl; }
 

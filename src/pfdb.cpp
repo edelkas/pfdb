@@ -4,7 +4,6 @@
 #include <string>
 
 #include "Film.hpp"
-#include "FilmAffinity.hpp"
 
 void parse_param(int argc, char* argv[], std::vector<std::string> &switches, std::vector<std::string> &parameters){
   for (int i = 0; i < argc; i++) {
@@ -28,8 +27,8 @@ int main(int argc, char* argv[]){
   parse_param(argc, argv, switches, parameters);
   std::cout << "Switches: " << switches.size() << ", Parameters: " << parameters.size() << std::endl;
 
-  FilmAffinity fa;
-  fa.ParseTitle("809297");
+  Net net;
+  net.Parse(FILMAFFINITY, "https://www.filmaffinity.com/es/film809297.html");
 
   /*
   Downloader downloader(true); // Initialize the downloader

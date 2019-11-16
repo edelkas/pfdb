@@ -3,15 +3,13 @@
 #include "Downloader.hpp"
 #include "Parser.hpp"
 
-/**
- * Type of URL: Movie, Search, ...
- */
-enum UrlType { Movie, Search };
+enum Website { IMDB, FILMAFFINITY };
+enum UrlType { MOVIE, SEARCH };
 
 /**
  * Class for downloading and parsing movies and movies searches.
  *
- * Each supported website is implemented as a child class. It is extensible.
+ * Each supported website is implemented as a namespace. It is extensible.
  * This class is a singleton, only one instance can be created.
  */
 class Net
@@ -27,7 +25,7 @@ public:
   /**
    * Download HTML file using libCURL and parse it using MyHTML
    */
-  void Parse(std::string url);
+  void Parse(Website web, const std::string& url);
 
   /**
    * Singleton: Remove possibility of duplicating object.

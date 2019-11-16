@@ -6,13 +6,16 @@
 /**
  * Parse movies and perform searches from the web FilmAffinity.
  */
-class FilmAffinity : public Net
+namespace FilmAffinity
 {
-public:
-  FilmAffinity();
-  ~FilmAffinity();
 
-  const std::string Url(UrlType type, std::string token) const;
-  const std::string ParseTitle(std::string id);
-  bool Test() const;
+  /**
+   * This function uses a fixed film to check that everything is being parsed
+   * correctly, in prevention of the website changing.
+   */
+  bool Test();
+
+  const std::string Url(UrlType type, const std::string& token);
+  const std::string Parse(const Node& root);
+
 };

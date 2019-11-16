@@ -41,7 +41,7 @@ int Downloader::InitCurl(){
   return 0;
 }
 
-const std::string& Downloader::Get(std::string url){
+const std::string& Downloader::Get(const std::string& url){
   curl_easy_setopt(curl, CURLOPT_URL, url.c_str()); // Set URL
   res = curl_easy_perform(curl);                    // Perform GET method
   if (res != CURLE_OK) {
