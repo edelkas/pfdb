@@ -1,4 +1,7 @@
 * Implement Doxygen-style comments, and include doxygen in the project.
 * Have a structure for specifying the reasons for which to have a film in the
   database, including a list of default ones.
+* Improve Node Search method to be able to search for tag AND attribute.
 * Implement a function to squish strings, another to compact arrays.
+* Function to obtain content from node, only text, not the whole serialization
+  (ie. remove tags).
