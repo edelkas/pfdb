@@ -3,7 +3,7 @@
 #include "Downloader.hpp"
 #include "Parser.hpp"
 
-enum Website { IMDB, FILMAFFINITY };
+enum Website { NONE, IMDB, FILMAFFINITY };
 enum UrlType { MOVIE, SEARCH };
 
 /**
@@ -16,16 +16,17 @@ class Net
 {
 private:
   Downloader downloader;
-protected:
   Parser parser;
 public:
   Net();
   ~Net();
 
+  static Website Host(const std::string& url);
+  
   /**
    * Download HTML file using libCURL and parse it using MyHTML
    */
-  void Parse(Website web, const std::string& url);
+  void Parse(const std::string& url);
 
   /**
    * Singleton: Remove possibility of duplicating object.
