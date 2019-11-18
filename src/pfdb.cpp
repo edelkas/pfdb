@@ -28,13 +28,8 @@ int main(int argc, char* argv[]){
   std::cout << "Switches: " << switches.size() << ", Parameters: " << parameters.size() << std::endl;
 
   Net net;
-  net.Parse("https://www.filmaffinity.com/es/film809297.html");
+  //net.Parse("https://www.filmaffinity.com/es/film809297.html");
+  net.Parse(FILMAFFINITY, "932476");
 
-  /*
-  Downloader downloader(true); // Initialize the downloader
-  Parser parser;               // Initialize the parser
-  std::string result = downloader.Get("https://www.elmundo.es/");
-  parser.Parse(result.c_str());
-  parser.Title();*/
   return 0;
 }

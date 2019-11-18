@@ -22,11 +22,12 @@ public:
   ~Net();
 
   static Website Host(const std::string& url);
-  
+
   /**
    * Download HTML file using libCURL and parse it using MyHTML
    */
   void Parse(const std::string& url);
+  void Parse(Website web, const std::string& id);
 
   /**
    * Singleton: Remove possibility of duplicating object.

@@ -32,6 +32,16 @@ void Net::Parse(const std::string& url) {
 
       break;
     default:
-      std::cout << "Warning: Website not supported." << std::endl;
+      std::cout << "Warning: Unsupported website." << std::endl;
+  }
+}
+
+void Net::Parse(Website web, const std::string& id) {
+  switch(web) {
+    case FILMAFFINITY:
+      Net::Parse(FilmAffinity::Url(MOVIE, id));
+      break;
+    default:
+      std::cout << "Warning: Unsupported website." << std::endl;
   }
 }
