@@ -7,7 +7,8 @@ Downloader::Downloader(bool safety) : safe(safety), error(""), buffer(""), res(C
 }
 
 Downloader::~Downloader() {
-  curl_global_cleanup();                    // Perform CURL global cleaup
+  curl_easy_cleanup(curl);                  // Perform CURL handle cleanup
+  curl_global_cleanup();                    // Perform CURL global cleanup
 }
 
 int Downloader::InitCurl(){
@@ -49,7 +50,6 @@ const std::string& Downloader::Get(const std::string& url){
     std::cout << curl_easy_strerror(res) << std::endl;
     buffer = "";
   }
-  curl_easy_cleanup(curl);                          // Perform cleanup
   return buffer;
 }
 

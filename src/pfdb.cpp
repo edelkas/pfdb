@@ -28,7 +28,7 @@ int main(int argc, char* argv[]){
   std::cout << "Switches: " << switches.size() << ", Parameters: " << parameters.size() << std::endl;
 
   Net net;
-  //net.Parse("https://www.filmaffinity.com/es/film809297.html");
+  net.Parse(FILMAFFINITY, "809297");
   net.Parse(FILMAFFINITY, "932476");
 
   return 0;
