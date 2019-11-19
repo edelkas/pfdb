@@ -43,6 +43,7 @@ int Downloader::InitCurl(){
 }
 
 const std::string& Downloader::Get(const std::string& url){
+  buffer = "";                                      // Clean previous data
   curl_easy_setopt(curl, CURLOPT_URL, url.c_str()); // Set URL
   res = curl_easy_perform(curl);                    // Perform GET method
   if (res != CURLE_OK) {
