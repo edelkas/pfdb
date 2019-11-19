@@ -23,8 +23,12 @@ const std::string FilmAffinity::Parse(const Node& root) {
   //std::vector<Node> fields;
   //fields.reserve(field_table.size());
   for (int i = 0; i < field_table.size(); i++) {
-    std::cout << field_table[i].Children()[0].Content() << ": ";
-    std::cout << field_table[i].Next().Next().Children()[0].Content() << std::endl;
+    std::string field = field_table[i].Children()[0].Content();
+    std::cout << field << ": ";
+    if (field == "Título original") {
+      std::cout << field_table[i].Next().Next().Children()[0].Content() << std::endl;
+      continue;
+    }
   }
 
   return title;

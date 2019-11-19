@@ -29,7 +29,6 @@ int main(int argc, char* argv[]){
 
   Net net;
   net.Parse(FILMAFFINITY, "809297");
-  net.Parse(FILMAFFINITY, "932476");
 
   return 0;
 }
