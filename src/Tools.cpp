@@ -17,3 +17,9 @@ std::string String::stripc(std::string s) {
   strip(s);
   return s;
 }
+
+int String::num(const std::string& s) {
+  int i;
+  sscanf(s.c_str(), "%d", &i);
+  return i;
+}

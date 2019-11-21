@@ -29,6 +29,14 @@ const std::string FilmAffinity::Parse(const Node& root) {
     if (field == "Título original") {
       std::cout << String::stripc(field_table[i].Next().Next().Children()[0].Content()) << std::endl;
       continue;
+    } else if (field == "Año") {
+      std::cout << String::num(field_table[i].Next().Next().Children()[0].Content()) << std::endl;
+    } else if (field == "Duración") {
+      std::cout << String::num(field_table[i].Next().Next().Children()[0].Content()) << std::endl;
+    }
+
+    else {
+      std::cout << String::stripc(field_table[i].Next().Next().Children()[0].Content()) << std::endl;
     }
   }
 

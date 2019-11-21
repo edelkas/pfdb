@@ -17,6 +17,11 @@
   void rstrip(std::string &s);       // Trim from end in place
   void strip(std::string &s);        // Trim from both ends in place
   std::string stripc(std::string s); // Trim from both ends (copy)
+
+  /**
+   * Extract first number from string
+   */
+   int num(const std::string& s);
  };
 
 /**
