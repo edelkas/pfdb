@@ -23,6 +23,7 @@ const std::string FilmAffinity::Parse(const Node& root) {
 
   //std::vector<Node> fields;
   //fields.reserve(field_table.size());
+  // TODO: Change this ugly mess into something better, maybe using enums and a switch
   for (int i = 0; i < field_table.size(); i++) {
     std::string field = field_table[i].Children()[0].Content();
     std::cout << field << ": ";
@@ -33,7 +34,9 @@ const std::string FilmAffinity::Parse(const Node& root) {
       std::cout << String::num(field_table[i].Next().Next().Children()[0].Content()) << std::endl;
     } else if (field == "Duración") {
       std::cout << String::num(field_table[i].Next().Next().Children()[0].Content()) << std::endl;
-    }
+    } else if (field == "País") {
+      std::cout << String::stripc(field_table[i].Next().Next().Children()[0].Children()[0].Attribute("title")) << std::endl;
+    } 
 
     else {
       std::cout << String::stripc(field_table[i].Next().Next().Children()[0].Content()) << std::endl;
