@@ -2,6 +2,7 @@
 #include <vector>
 #include "Net.hpp"
 #include "FilmAffinity.hpp"
+#include "Tools.hpp"
 
 const std::string FilmAffinity::Url(UrlType type, const std::string& token) {
   switch(type) {
@@ -26,7 +27,7 @@ const std::string FilmAffinity::Parse(const Node& root) {
     std::string field = field_table[i].Children()[0].Content();
     std::cout << field << ": ";
     if (field == "Título original") {
-      std::cout << field_table[i].Next().Next().Children()[0].Content() << std::endl;
+      std::cout << String::stripc(field_table[i].Next().Next().Children()[0].Content()) << std::endl;
       continue;
     }
   }
