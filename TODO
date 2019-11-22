@@ -1,3 +1,8 @@
+* Change the Node class so that all methods deal with Node* instead of Node.
+  Also, in order to avoid the destructor of the Node class to free the
+  underlying node (which would render other Node's pointing to it useless),
+  maybe use a shared pointer so that this only happens when no more such
+  Node's exist.
 * Implement Doxygen-style comments, and include doxygen in the project.
 * Have a structure for specifying the reasons for which to have a film in the
   database, including a list of default ones.
