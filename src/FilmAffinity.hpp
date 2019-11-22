@@ -16,6 +16,7 @@ namespace FilmAffinity
   bool Test();
 
   const std::string Url(UrlType type, const std::string& token);
+  void ParseField(const Node& node, std::string(*func)(const Node&));
   const std::string Parse(const Node& root);
 
 };

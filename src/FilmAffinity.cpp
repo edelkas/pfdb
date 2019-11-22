@@ -16,14 +16,24 @@ const std::string FilmAffinity::Url(UrlType type, const std::string& token) {
   }
 }
 
+void FilmAffinity::ParseField(const Node& node, std::string(*func)(const Node&)) {
+  std::vector<Node> entries = node.Next().Next().Search(V, "class", "nb");
+  std::vector<std::string> names;
+  names.reserve(entries.size());
+  for (int i = 0; i < entries.size(); i++) {
+    names[i] = func(entries[i]);
+    std::cout << names[i];
+    if (i < entries.size() - 1) std::cout << ", ";
+  }
+  std::cout << std::endl;
+}
+
 const std::string FilmAffinity::Parse(const Node& root) {
   std::string title = root.Search(V, "id", "main-title")[0].Children()[1].Children()[0].Content();
   std::cout << "Título: " << title << std::endl;
 
   std::vector<Node> field_table = root.Search(V, "class", "movie-info")[0].Search(T, "dt");
 
-  //std::vector<Node> fields;
-  //fields.reserve(field_table.size());
   // TODO: Change this ugly mess into something better, maybe using enums and a switch
   // TODO: Search for itemprops
   for (int i = 0; i < field_table.size(); i++) {
@@ -53,15 +63,7 @@ const std::string FilmAffinity::Parse(const Node& root) {
       std::cout << std::endl;
       continue;
     } else if (field == "Guion") {
-      std::vector<Node> writers = field_table[i].Next().Next().Search(V, "class", "nb");
-      std::vector<std::string> names;
-      names.reserve(writers.size());
-      for (int i = 0; i < writers.size(); i++) {
-        names[i] = String::stripc(writers[i].Children()[0].Children()[0].Content());
-        std::cout << names[i];
-        if (i < writers.size() - 1) std::cout << ", ";
-      }
-      std::cout << std::endl;
+      //ParseField(field_table[i], [](const Node& node){ return String::stripc(node.Children()[0].Children()[0].Content()); });
       continue;
     }
 
@@ -73,5 +75,7 @@ const std::string FilmAffinity::Parse(const Node& root) {
 
   return title;
 }
+
+
 
 bool FilmAffinity::Test() { }

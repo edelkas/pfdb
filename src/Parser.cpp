@@ -15,7 +15,7 @@ Node::~Node() {
   // copies have been deleted.
 
   /* Release resources */
-  myhtml_node_free(node);
+  //myhtml_node_free(node);
 }
 
 Node::Node(const Node& n) {
