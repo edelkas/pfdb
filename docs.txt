@@ -1,0 +1,706 @@
+\\ --- Librerías ---
+
+### Resumen ###
+
+* Estáticas: Se linkan al binario durante la compilación del programa. Suelen ser más rápidas.
+* Dinámicas: Se linkan al binario durante la ejecución del programa, por tanto, hace falta tenerlas como archivos por separado, ya sea en la carpeta del binario, o en carpetas comunes del sistema.
+
+### Ficheros ###
+
+* En ambos casos, en C++, las librerías suelen constar de 2 partes:
+** Los headers (.h), son ficheros de código en C++ que van en el include, contienen las declaraciones de las funciones de la librería.
+** Las librerías, son ficheros objeto que suelen ir en el lib, contienen las definiciones de las funciones.
+*** Estáticas: (.a en Linux, .lib en Windows).
+*** Dinámicas: (.so en Linux, .dll en Windows).
+
+### Uso ###
+
+* Para añadir una carpeta al include, usamos -I, y para añadir un fichero, usamos -i.
+* Para añadir una carpeta con librerías al linker, usamos -L, y para linkar una librería, usamos -l.
+* Si no podemos nada, son relativas a la carpeta del programa.
+* Ejemplo: g++ codigo.cpp -Iinclude -Llib -lglfw -o App
+* Esto compila el fichero codigo.cpp a un binario sin extensión de nombre App, añadiendo la carpeta "include" (que estaría en la carpeta del proyecto) al include, y linkando las librerías de la carpeta "lib" (idem), así como linkando la librería "glfw" (en unix, libglfw.so, en Windows, glfw.dll), que estará en una de las carpetas comunes del sistema.
+
+* Hay dos tipos de linkeo dinámico:
+** 1) Que el ejecutable requiera la presencia de la librería para ejecutarse, es decir, que sepa de su existencia, aunque siga siendo algo externo.
+** 2) Que el ejecutable no tenga nada que ver, que se puede ejecutar sin la librería, pero que si está presente, sea capaz de linkarla y usar sus funciones.
+* Nota: Por esto, es habitual que las librerías proporcionen 3 ficheros. La librería estática, y dos ficheros para la librería dinámica. Uno es la librería dinámica en sí, y otro realmente es una pequeña librería estática que contiene los punteros a las funciones de la librería estática, para que el programa compilado ya las conozca (caso 1).
+
+NOTA: Para compilar un programa que requira una librería dinámica, es preciso hacer cierto ajuste al header. La mayoría de las librerías soportan ambos casos. Para más información sobre esto Googlear.
+
+### Construcción ###
+
+* Realizar una librería estática es fácil, basta compilar el código para crear los archivos objeto, y luego unirlos. En Linux, esto se hace con el "archiver" (ar). Para usarla, bastará entonces con linkarla de manera usual.
+* Para realizar una librería estática, es preciso:
+** Durante la compilación del fichero objeto, usar la flag -fPIC (position-independent code).
+** Durante el linkeo, usar la flag -shared.
+
+Nota: También se pueden usar funciones para cargar librerías dinámicas desde código, usando funciones como dlopen(), dlsym(),... presentes en dlfcn.h.
+
+Más info: https://renenyffenegger.ch/notes/development/languages/C-C-plus-plus/GCC/create-libraries/index
+
+\\ --- Preprocesador ---
+* Es la primera fase de la compilación, y lo que hace es literalmente modificar el código fuente de acuerdo a ciertas reglas. Le siguen la compilación, el ensamblaje, y el linkaje.
+* Todas las directivas del preprocesador comienzan con #. Las más comunes: include, define, ifdef, ifndef, pragma...
+* Cada instrucción del preprocesador debe ir en una línea. Se pueden usar \ para hacer macros de varias líneas.
+
+	\\ --- #pragma once ---
+	* Una directiva del preprocesador de tipo "pragma" sirve para activar o desactivar ciertas funciones.
+	* La más común es "once", se suele usar en headers, y sirve para asegurar que los contenidos del fichero .h sólo se definen una vez en cada fichero .cpp en que se incluya, para evitar errores de duplicación. Antes esto se solía hacer con #ifdef y #ifndef.
+
+	\\ --- #include ---
+	Esta directiva del preprocesador copia literalmente el contenido del fichero en el actual.
+	* Si va con <>, busca el fichero en las carpetas estándar (include, lib, etc).
+	* Si va con "", busca el fichero en carpetas relativas a la del fichero actual (eg. "../src").
+
+	\\ --- #define ---
+
+	Una directiva del preprocesador que declara una especie de expresión o variable, y si se le asigna un valor, entonces sustituye dicha expresión por el valor asignado en todo el código fuente del fichero.
+	eg. #define Log(x) cout << x << endl;
+	A partir de entonces, cada vez que aparezca Log(x) en el código, se cambiará por lo que sigue.
+
+	\\ --- #ifdef & #ifndef---
+
+	* Una directiva del preprocesador, "if defined" y "if not defined". Sirve primordialmente para evitar duplicados.
+	* eg.
+	#ifndef FUNCION
+	#define FUNCION
+	 ... cierto código que queremos que se haga una sóla vez, como definiciones
+	#endif
+
+\\ --- bucles ---
+
+### for ###
+* En C++ se introdujo la notación basada en rangos:
+** for (Clase elemento : objeto)
+* Para evitar que se copien los objetos innecesariamente dentro del scope del bucle, conviene pasar las cosas por referencia. Ejemplo, si tenemos un array de objetos de tipo Vertice llamado vertices:
+** for (Vertice& v : vertices)
+
+\\ --- punteros y referencias ---
+* Un puntero es una variable que guarda una dirección de memoria, a menudo, donde se encuentra otra variable (se dice entonces que apunta a dicha variable).
+* Una referencia es un nombre alternativo, un alias, para otra variable..
+* Nota: En consecuencia, una vez definida la referencia, no se puede modificar a quien apunta, pues cada vez que se use será como usar la variable original.
+* Nota: Los punteros son más potentes que las referencias, todo lo que se puede hacer con referencias se puede hacer con punteros, y mucho más.
+
+# El operador & usado antes del nombre de una variable devuelve la dirección de memoria de la misma.
+# El operador & usado después del nombre de una variable devuelve una referencia a la variable.
+# El operador * usado después de un tipo crea un puntero de dicho tipo.
+# El operador * usado antes de un puntero devuelve el valor de la variable a la que apunta.
+
+# eg. Crear un puntero que apunta a variable: tipo* nombre = &variable;
+# eg. Modificar el valor de la variable a la que apunta dicho puntero: *nombre = nuevoValor;
+# Aritmética con punteros: Se puede sumar N a un puntero, lo cual devuelve otro puntero a una memoria offseteada por N*sizeof(puntero). Por ejemplo, si ptr es un puntero de tipo entero, entonces ptr+1 apunta al siguiente bloque de 4 bytes en memoria.
+# Nota: Al declarar una lista de punteros, se ha de indicar el asterisco para cada variable, es decir: int *x, *y; en lugar de int* x, y; (en cuyo caso, 'y' sólo sería un int).
+
+\\ --- sizeof ---
+Número de bytes del argumento, que puede ser un tipo (eg. "char") o una variable.
+
+\\ --- static ---
+* Fuera de una clase, representa una variable visible sólo para ese fichero .cpp. Privada para fichero, por así decirlo.
+* Dentro de una clase, representa una variable de clase, no de objecto. Es decir, una única variable en memoria que comparten todos los objectos de esa clase. Referir a ella usando Clase::x en lugar de Clase.x
+* En cualquier otro sitio, representa una variable cuyo lifetime es "infinito", pero el scope es local. Por ejemplo, una función en la que se define una variable, de volverá a definir cada vez que se llame la función. Pero si es estática, sólo de define la primera vez, y los calls subsecuentes podrán modificar su valor preexistente.
+
+\\ --- extern ---
+Una variable que en lugar de definirse en este fichero, en linker deberá buscar su definición en otros ficheros, y ésta definición no podrá ser static, pues entonces en linker no la vería.
+
+\\ --- Inicialización ---
+* Por ejemplo, por lista: std::string s{'a','b',c'}; en lugar de std::string s = "abc"; Funciona también para clases y structs, así se inicializa de golpe. Ver https://en.cppreference.com/w/cpp/language/initialization
+
+\\ --- enum ---
+
+* Es como crear un nuevo tipo cuyos valores sólo pueden ser enteros de una lista predefinida, a los cuales se les da un nombre.
+* A pesar de ser un nuevo "tipo", se comporta como un entero: Se puede comparar, sumar, etc.
+* Ejemplo: Si quiero representar cada tab de N++ con un entero, querré restringir los valores de dicho entero y poder referirme a él por nombre:
+enum Tab { SI = 0, S, SU, SL, SS, SS2 };
+Y puedo usarlo así:
+Tab tab = S;
+* Nota: Asignar un valor es opcional. Por defecto, el primero será 0 y los siguientes irán sumando 1. Si asigno a uno 5, los siguientes irán sumando 1, etc.
+
+\\ --- Operadores ---
+
+Son simplemente funciones, pero se usa un símbolo para clarificar el código.
+
+#   .    #
+Sirve para llamar métodos de objetos.
+No se puede aplicar a punteros.
+
+#   ->   #
+Sirve para llamar métodos de objetos cuando estamos usando un puntero.
+Así, foo->bar() es lo mismo que (*foo).bar(); (. tiene preferencia sobre *)
+Además, se puede sobrecargar, a diferencia del punto. Por ejemplo, si Clase tiene un método Print(), y tengo una ClasePuntero, podría hacer
+Clase* operator->() { return m_Obj; \\ digamos }
+y entonces usar
+objetoPuntero->Print();
+en lugar de hacer m_Obj público y usar
+objetoPuntero.m_Obj.Print();
+
+#   ::   #
+Sirve para referirse a miembros de un namespace concreto.
+Por ejemplo, para usar métodos estáticos de una clase.
+Si empezamos por ::, indicamos que comenzamos en el namespace root.
+
+#   *   #
+Sirve para dereferenciar punteros, es decir, acceder al dato guardado en la dirección de memoria a la que apuntan.
+
+#   &   #
+Sirve para obtener la dirección de memoria de una variable.
+
+#   <<   #
+Sirve para realizar un bitshift left.
+Funciones como cout lo tienen sobrecargado para imprimir cosas en pantalla.
+
+#   Operadores matemáticos   #
++, -, *, /, +=, -=, *=, /=, ++, --, ==, etc.
+
+#   Más ejemplos   #
+'new' y 'delete' son operadores también
+
+\\ --- sobrecarga de operadores ---
+* Para sobrecargar el operador + en la clase Clase hacemos:
+tipo operator+(par) { ... }
+donde en general tipo será Clase, ya que estamos sumando objetos de Clase. Pero vamos, eso ya depende.
+* Ahora podremos sumar objetos de la clase Clase usando +, en lugar de tener que definir un método "Suma".
+* Nota: También se puede usar el operador como método, es decir, llamar a operator+(objeto), que se comportará como un método "Suma" normal.
+
+### Ejemplo útil: Sobrecargar << ###
+std::ostream& operator<<(std::ostream& stream, Clase objeto) {
+    stream << objeto.imprimir;
+    return stream;
+}
+
+### Ejemplo útil: Sobrecargar == ###
+bool operator==(Clase objeto) const { return comparación }
+
+\\ --- Constructores
+
+* Método que se llama cuando se crea un objeto, ya sea en el stack, o el en heap (con 'new').
+* No tienen tipo de retorno.
+* El nombre debe coincidir con el de la clase.
+* Si no se pone, C++ crea uno vacío por defecto, público.
+* Por tanto, si queremos evitar que se puedan crear objectos de esa clase, es decir, que sea una clase puramente estática, podemos hacer dos cosas:
+** Crear un constructor explícitamente, pero hacerlo privado.
+** Definirlo como delete, es decir: Clase() = delete;
+* Nota: Aunque no inicialicemos las variables, podríamos acceder a ellas a través de métodos del objecto porque ya han sido alocadas. No obstante, obtendríamos basura, los valores previamente guardados en las direcciones de memoria correspondientes.
+
+\\ --- Destructores ---
+* Método que se llama cuando se destruye un objeto, ya sea en el stack (cuando nos salimos del scope), o en el heap (con 'delete'),
+* No tienen tipo de retorno.
+* El nombre debe ser igual que el constructor, precedido por ~.
+* NOTA: Puede ser una buena idea tener mensajes en el constructor y el destructor de un objeto, para loguear.
+
+\\ --- Herencia ---
+* class ClaseHija : public ClasePadre1, ClasePadre2...
+* Los objectos de ClaseHija tienen también tipo ClasePadre, pero no viceversa.
+
+\\ --- Constructor con herencia ---
+* USO 1: La manera de llamar al constructor de la clase padre es la siguiente:
+ClaseHija() : ClasePadre(par1, par2) { }
+* Nota: Es como el "super" en Java.
+
+* USO 2: También sirve para inicializar los miembros del objeto antes de abrir el constructor.
+	Clase(par) : variable(par) { }
+Lo de arriba es "equivalente" a
+	Clase(par) { variable = par; }
+donde 'variable' sería un miembro de Clase.
+* ¿Por qué usarlo?
+** Es necesario para inicializar variables const o referencias.
+** De la forma vieja se crean dos copias del objeto, una con el constructor por defecto y otra con el que uses explícitamente.
+** En el resto de casos no es necesario, pero por convenio se ha convertido en estándar.
+
+* Nota: Si hay varios parámetros o queremos mezclar los usos, separar con comas.
+
+\\ --- Funciones virtuales ---
+* Métodos en una clase padre que se pueden sobreescribir en las clases hijas.
+* A diferencia de otros lenguajes, pueden tener un cuerpo definido, para que no sea una necesidad definirlas en las clases hijas.
+* Sintaxis:
+** En la clase padre: virtual tipo Metodo() { }
+** En la clase hija: tipo Metodo() override { }
+* Nota: Lo segundo no es necesario, es por claridad de código y ayuda a debuguear. Introducido en C++11.
+* Nota: Tienen un sutil impacto en el rendimiento del programa.
+
+\\ --- Interfaz ---
+* Una clase con alguna función puramente virtual, es decir, sin definición.
+* Fuerza a que las clases hijas definan dichos métodos.
+* Vuelve a ser conveniente que las hijas usen "override" al definirlos.
+* Sirve para garantizar que las clases hijas tengan dichos métodos, para así poder definir funciones generales que los usen.
+* No se pueden instanciar objetos de un interfaz, evidentemente.
+* Sintaxis:
+** virtual tipo Metodo() = 0;
+* Nota: Es el equivalente de funciones "abstractas" en otros lenguajes, como Java.
+
+\\ --- Visibilidad ---
+* La visibilidad de un miembro (método o variable) en una clase determina quién puede acceder a dichos miembros.
+* En C++ hay 3:
+** private: Sólo la clase y sus friends.
+** protected: Sólo la clase y sus descendientes, así como friends respectivos.
+** public: Todos.
+
+\\ --- class vs struct ---
+* En C++ no hay casi ninguna, salvo la visibilidad: Por defecto privado en clases y público en structs.
+
+\\ --- Arrays ---
+* Un array es de tipo puntero, y apunta al primer elemento en memoria.
+* Los elementos se guardan en un bloque contiguo. Por este motivo, tienen tamaño fijo establecido en la declaración.
+* Acceder a un elemento no es más que offsetear la memoria por tamaño*índice.
+* Se puede acceder a elementos con índices out of bounds, en cuyo caso accederemos a otros lugares de la memoria (peligro).
+
+* Nota: A diferencia de otros lenguajes, no hay una forma de saber el tamaño del array (como un método size).
+* Nota: En ocasiones, es preciso declarar los arrays en el heap, es decir, usando 'new'. Por ejemplo, si queremos que una función devuelva un array, no podemos declararlo en el stack, pues entonces desaparecerá de la memoria al acabar la función.
+* Nota: En ocasiones, cuando se declara un array en el stack, el tamaño debe saberse en la compilación, por tanto, si se quiere usar una variabla para determinar el tamaño del array, es posible que eso falle, en cuyo caso deberá hacerse la variable estática.
+
+\\ --- std::array ---
+* Estructura introducida en C++11.
+* Es memoria es basícamente como un array estático (el equivalente dinámico es std::vector).
+* Pero con seguridad (e.g. chequeo de bounds) y métodos (e.g. iteradores, saber el tamaño, ...).
+* Además, podemos usar los algoritmos de la STL (std::sort, etc.).
+* Introduce muy poco overhead, despreciable.
+* Si lo creas en el stack, guarda sus datos en el stack, a diferencia de un std::vector.
+* Sintáxis: std::array<tipo,tamaño> nombre;
+* Se usa igual que un array convencional.
+* Nota: El bounds check sólo ocurre debugueando, para no limitar performance en release.
+* Nota: Si queremos usarlo como parámetro en una función, para saber el tamaño (que es preciso para saber el tipo preciso), podemos templatear la función y mandarlo como parámetro de plantilla.
+
+\\ --- strings ---
+### C ###
+* Es un array de chars.
+* Como una vez creado su longitud no se puede modificar, suele marcarse como const. Y para modificarlo, debe crearse una string nueva.
+* Sintáxis: const char* nombre = "string";
+* Nota: C aloca el tamaño necesario en memoria, declara un puntero que apunta al comienzo, y al final pone un carácter 0 (null-terminated string), para así saber dónde acaba. Por tanto, puede simularse el funcionamiento declarando un array de chars explícitamente, pero deberá añadirse el 0 al final:
+char nombre[5] = { 't', 'e', 's', 't', 0};
+
+### C++ ###
+* Hay una clase, std::string, que recubre un array de chars con una series de métodos útiles.
+* #include <string>
+* Cuando se pasen a funciones, si no se indica nada, se pasa una copia del objecto, y por tanto sus modificaciones no afectarán al original, a parte de que es menos eficiente. Por tanto, en general, se debe pasar por referencia, y si no se va a modificar, entonces también const.
+
+### String literals ###
+* Cualquier texto envuelto en comillas en el código.
+* Eso se transformará en un tipo u otro dependiendo de las circunstancias, pero en general, es:
+** const char[]
+** const char*
+* Nota: Si se usa el puntero, entonces el string literal se guarda en una zona de sólo lectura en memoria, con lo cual aunque eliminemos el const, no podemos modificarlo.
+
+### Tipos de string literals ###
+* C++11 añadió varios tipos nuevos de string literals:
+const char* name = u8"Test"; \\ el normal, el "u8" es opcional, claro
+const wchar_t* name = L"Test"; \\ wide string
+const char16_t* name = u"Test"; \\ UTF-16 encoded
+const char32_t* name = U"Test"; \\ UTF-32 encoded
+* También se puede añadir el prefijo "R" para evitar que escape los caracteres.
+
+\\ --- const ---
+
+### Con variables ###
+* Sirve para indicar que una variable es constante.
+* Dependiendo del compilador, puede ser posible modificar variables constantes. Así que también debe entenderse como una restricción o una promesa.
+
+### Con punteros ###
+* Con punteros, tenemos dos opciones:
+** 'const int* nombre' no permite modificar el contenido, es decir, sería como '(const int)* nombre'.
+** 'int* const nombre' no permite modificar la dirección a la que apunta, es decir, sería como 'const (int* nombre).'
+** 'const int* const nombre' no permite modificar ninguno.
+
+### Con métodos ###
+* Indica que un método no puede modificar miembros de la clase, es decir, es un método read-only, por ejemplo, un getter.
+* tipo Nombre() const { }
+* La excepción son los miembros 'mutables', pueden ser cambiados incluso por métodos const.
+* La principal razón para usarlo es porque, de lo contrario, si instanciamos un objeto de esta clase con const, no podrá usar métodos no const.
+
+Por tanto, si un método read-only devuelve un puntero que no se puede modificar y cuyo contenido no se puede modificar, se declararía como:
+const tipo* const Nombre() const { }
+
+\\ --- mutable ---
+* Permite que los métodos const de una clase modifiquen a este miembro (e.g. mutable int = 5;).
+* Permite modificar los parámetros de un lambda pasados por valor (e.g. auto f = []() mutable { };).
+
+\\ --- operador ternario ---
+* Son equivalentes:
+** booleano ? expresion1 : expresion2
+** if (booleano) { expresion1; } else { expresion2;}
+* En ocasiones, incluso el ternario es más rápido, por ejemplo, cuando se usa para asignar un valor condicionalmente, no crea un objeto intermedio.
+
+\\ --- using ---
+* Tiene varios usos:
+** Hacer alias de tipos: using String = std::string; \\permite declarar strings usando String en lugar de std::string. C++11. Similar a typedef.
+** Importar los comandos de un namespace: using namespace std;
+** Importar los métodos de la superclase: using Superclase::Metodo;
+
+\\ --- typedef ---
+* Crear aliases de tipos
+* Ejemplo: typedef std::vector<std::string> vec;
+* Uso: vec nombre = ...
+* Es básicamente una regla de sustitución de tipos.
+
+\\ --- instanciar objetos ---
+* Cuando sea posible, crear objetos en el stack, usando las formas equivalentes:
+** Clase nombre(pars);
+** Clase nombre = Clase(pars);
+* Sin embargo, cuando sea necesario usar el heap, usar 'new':
+** Clase* nombre = new Clase(pars);
+* 'new' devuelve un puntero a la dirección donde se guarda el objeto.
+* Lo reservado con 'new' debe liberarse necesariamente con 'delete'.
+
+\\ --- new ---
+* Es un operador.
+* Sirve para reservar espacio _contiguo_ en memoria, concretamente en el heap.
+* Determina el espacio necesario en función del tipo especificado.
+* Devuelve un puntero a la primera dirección.
+* Llama al constructor de la clase.
+* Es preciso liberarla usando delete.
+* Sintáxis: new Clase(pars);
+
+### Funcionamiento ###
+* Básicamente, estas dos líneas son equivalentes:
+** Clase* objeto = new Clase();
+** Clase* objeto = (Clase*)malloc(sizeof(Clase));
+* La única diferencia es que 'new', además, llama al constructor de la clase.
+* El casteo es necesario puesto que malloc devuelve punteros sin tipo.
+
+### Nota ###
+* Se puede escoger no reservar nueva memoria y elegir dónde ejecutar el constructor, especificando con un puntero una región de memoria ya reservada donde quepa el objeto, por ejemplo:
+* char* espacio = new char[100]; \\ reservo 100 bytes
+* Clase* objeto = new(espacio) Clase(pars); \\ guardo el objeto
+* delete[] espacio; \\ libero la memoria y por tanto el objeto
+
+* NOTA: Es fácil olvidar liberar la memoria y tener 'memory leaks'. Supongamos que en el constructor de una clase estamos creando algo con 'new', será preciso escribir un destructor y usar 'delete' en el mismo.
+
+\\ --- delete ---
+* Es un operador.
+* Sirve para liberar memoria contigua en el heap.
+* Se le pasa el puntero y así determina el tamaño.
+* También llama al destructor.
+
+### Funcionamiento ###
+* Básicamente son equivalentes:
+** free(puntero);
+** delete(puntero);
+* Salvo que 'delete' además llama al destructor.
+
+\\ --- conversión implícita ---
+* C++ puede realizar _una_ conversión implícita automáticamente.
+* Ejemplo: Si una función requiere un string de parámetro, puedo mandarle un string literal, que recordemos es de tipo const char*, sin necesidad de castearlo haciendo std::string("literal"); pero si fuera necesario hacer dos conversiones, entonces no.
+* Para evitarlo, usar "explicit".
+
+\\ --- explicit ---
+* Se puede usar en los constructores para evitar que C++ realice conversiones implícitas. Es decir, sólo se podrá usar si se suministran parámetros del tipo exacto.
+* Sintáxis: explicit Clase(pars) { }
+
+\\ --- this ---
+
+* Disponible en métodos no estáticos.
+* Es un puntero que apunta al objeto siendo usado.
+* Es de tipo Clase* const, es decir, no se puede reasignar el puntero.
+* Si es un método const, el puntero será de tipo const Clase* const.
+* Al ser un puntero, habrá que usar -> o derreferenciarlo, para llamar a miembros o métodos.
+* También es útil para pasar el objeto actual a una función que tome Clase* como parámetro.
+* Rareza: Se podría usar 'delete this' dentro de un método. Peligro!
+
+\\ --- stack vs heap ---
+
+* Cuando un proceso se ejecuta, se reserva espacio en la memoria RAM.
+* Ésta está estructurada en diversas áreas, las dos principales de las cuales son el 'stack' y el 'heap'.
+* Cada proceso tiene su stack y su heap.
+* Cada hilo (thread) tiene su stack, el heap es compartido.
+
+### Stack ###
+* El 'stack' es una región de memoria donde se guardan datos de forma secuecial y automática, en una dirección.
+* Para leer cosas, primero se han de quitar las de arriba, como en una pila de libros.
+* Por tanto, las cosas suelen estar contiguas en memoria.
+* El funcionamiento es más rápido que el 'heap', debido a que al ordenador basta con mover el stack pointer apropiadamente. Es un ciclo de CPU.
+* El tamaño es más pequeño, por ejemplo, 2MB.
+
+* Cuando se entra en un 'scope' se crea un stack frame, es decir, se mueven ciertos datos al stack, y se empieza a guardar. Cuando se sale del scope, dichos datos se liberan.
+* Por tanto, algo creado en el stack desaparece al salir del scope. Si esto no se desea, se debe:
+** Crear el objeto antes, en un scope superior, y luego modificarlo.
+** Guardarlo en el heap.
+
+* ¿Se puede guardar un objeto en el heap, y que aún así se elimine automáticamente el salir del scope? Sí, envolviéndolo en una clase que esté en el stack, y que destruya el objeto original en su destructor. Esto es un 'unique pointer'.
+class PunteroClase{
+    Clase* objeto;
+    PunteroClase(Clase* objeto) : objeto(objeto) {}
+    ~PunteroClase() { delete objeto; }
+}
+Y podemos usarlo haciendo
+PunteroClase puntero(new Clase());
+o bien
+PunteroClase puntero = new Clase(); \\ conversión implícita
+* Otros usos de este comportamiento podría ser TIMER: una clase que cronometre lo que dura un scope, o MUTEX: una clase que controle que cada scope sólo se accede por un hilo en cada instante (lockeando y unlockeado al comienzo y al final del scope).
+
+### Heap ###
+
+* El 'heap' es una región más amplia.
+* También suele tener un tamaño predefinido, pero es variable, dinámico.
+* Es más lento que el stack, ya que para reservar memoria es preciso realizar muchas operaciones, llevar la cuenta de los bloques de memoria libres, buscar un sitio para guardar los datos, etc.
+* Los datos no se guardan de forma secuencial, sino que se busca un sitio libre. Más fragmentación.
+* Una desventaja curiosa aunque menor es que al estar los datos más contiguos en el stack, es menos probable tener 'cache misses', aunque el efecto en este caso es muy pequeño ya que tampoco hay tantos misses (si fueran millones, sería otra historia).
+* Debemos liberar los datos de memoria manualmente.
+
+* Sintáxis: Usar el comando 'new'.
+int num = 5; // Stack
+int *num = new int; *num = 5; delete num; // Heap
+
+### Conclusión ###
+
+* Usar el stack siempre que podamos, porque 1) es más rápido y 2) es más cómodo.
+* Usar el heap cuando 1) pese vario megas y no quepa en el stack o 2) necesitemos que sobreviva fuera del scope.
+
+\\ --- smart pointers ---
+* Son clases que envuelven un puntero, y que se encargan de crear un objeto con 'new' en el heap y destruirlo con 'delete' de forma automática, cual objeto en el stack.
+* #include <memory>
+
+### std::unique_ptr ###
+* El objeto se comporta como en el stack, es decir, se elimina al salir del scope.
+* Es 'unique' porque sólo puede haber uno para cada región de memoria, no se puede copiar.
+* Sintáxis:
+** std::unique_ptr<Clase> objeto(new Clase()); \\ es un constructor explícito
+** std::unique_ptr<Clase> objeto = std::make_unique<Clase>(); \\ preferido, en caso de excepciones
+* Casi nada de overhead.
+
+### std::shared_ptr ###
+* Se pueden tener varios punteros referenciando al mismo objeto, cada uno de los cuales muere al salir de su scope. Cuando todos mueren, entonces la memoria se libera.
+* Esto se consigue mediante "reference counting".
+* std::shared_ptr<Clase> objeto = std::make_share<Clase>();
+* std::shared_ptr<Clase> objeto2 = objeto;
+* Más overhead que std::unique_ptr.
+
+### std::weak_ptr ###
+* Sirve para referenciar un std::shared_ptr sin aumentar el número de referencias.
+* Por tanto, puedo referirme al objeto y apuntarle, así como usarlo si sigue vivo, pero no lo mantengo vivo, puesto que no aumenta las referencias.
+* Puedo usar el weak_ptr para preguntar si el objeto está vivo antes de operar con él.
+
+\\ --- friends ---
+
+* Los friends de Clase son funciones, o bien clases, que a pesar de estar definidas fuera de Clase, pueden acceder a sus miembros privados, tal y como si pertenecieran a Clase.
+* A efectos de visibilidad, los friends la heredan igual que las clases hijas.
+* Sintáxis: Dentro de Clase, poner la declaración de la función prefijada por friend:
+** friend FuncionAmiga(tipo1 parámetro1);
+
+\\ --- copy vs reference ---
+
+### COPY ###
+
+* En C++ cuando asignamos el valor de un objeto a otro usando el operador =, SIEMPRE estamos haciéndolo por copia, es decir, creando un nuevo objeto en otra dirección de memoria y copiando literalmente el contenido de uno al otro.
+* Lo mismo ocurre al pasar objetos como parámetros.
+* PROBLEMA: Digamos que tenemos una clase con un miembro que es un char*, digamos una clase String. Instanciamos un objeto de esta clase, y luego creamos otro y le asignamos el valor del primero. Esto crea una copia idéntica de los miembros del primer objeto. Por tanto, lo que se ha duplicado no es la cadena de texto a la que apuntan, sino el puntero char*. De modo que a pesar de haber copiado, aún así al modificar la cadena de texto de un objeto, se modificará la del otro. Y peor aún, al destruir los objetos el programa crasheará, puesto que intentará liberar la misma región de memoria dos veces (si hemos tenido que usar 'delete').
+* SOLUCION: Podríamos pensar en definir un método que sirva para copiar un objeto a otro, para lo cual habría que recorrer recursivamente los miembros que tenemos en busca de objetos que reconstruir. Pero la verdadera solución es usar el constructor de copia, 'copy constructor'.
+
+# Shallow vs deep copy #
+* Shallow copy es una copia superficial de un objeto, copiando literalmente sus miembros.
+* Deep copy es una copia profunda de un objeto, visitando las regiones de memoria necesarias para crear una copia de todo lo que se involucra en dicho objeto (pensemos en el caso de los punteros). Por tanto, debe ser un proceso recursivo.
+
+# Copy constructor #
+* Es el método que se llama cuando se asigna a un objeto de Clase otro objeto de Clase, es decir, cuando queremos crear una copia de un objeto.
+* Hay uno por defecto que hace una 'shallow copy'.
+* Si es preciso, conviene definirlo.
+* Sintáxis: Es como un constructor normal, pero recibe como parámetro exactamente otro objeto de su mismo tipo.
+** Clase(const Clase& nombre){ }
+* Dentro del mismo básicamente debemos volver a construir el objeto como antes. Las cosas que se puedan copiar shallowmente pueden ir en la lista de inicialización, y el resto, deberé volver a crearlas. Por ejemplo, en el caso de la clase String anterior, deberé volver a alocar con 'new' y crear un nuevo char*.
+
+### REFERENCE ###
+
+* Cuando pasamos un objeto como parámetro a una función, se crea una copia del mismo tal y como ocurre al asignar con el operador =.
+* Para evitarlo, podemos mandar la dirección de memoria del objeto en su lugar, y recibir un puntero al mismo, que luego a la hora de usarlo en la función, tendremos que dereferenciar.
+* Para evitar este jaleo, lo anterior es equivalente a pasar el objeto por referencia:
+** tipo NombreFuncion(tipo NombreVariable&){ }
+* Haciendo esto, no hace falta enviar el puntero, sino que podemos enviar el objeto, al usar la función. Tampoco hace falta dereferenciar nada.
+* NOTA: Otra recomendación es que cuando la función no vaya a modificar el objeto, es conveniente entonces pasarlo de forma const. Por tanto, una buena regla general si no vamos a modificar un objeto es pasarlo siempre, por defecto, mediante 'const reference'.
+** tipo NombreFuncion(const tipo NombreVariable&){ }
+
+\\ --- STL ---
+* Se trata de la Standard Template Library.
+* Todas las clases que contiene son templates, con lo cual el tipo lo escoges tú.
+* Hay contenedores (vector, array, list, etc), algoritmos (ordenación, búsqueda, partición, etc), funtores, e iteradores.
+
+\\ --- std::vector ---
+* Definido en la STL.
+* Es un array dinámico, como un ArrayList.
+* Sigue siendo un espacio contiguo en memoria.
+* Cuando llega a cierto límite, reserva otro trozo más grande, mueve el contenido, y libera el viejo -> Menos rendimiento.
+* Aunque esté en el stack, guarda sus contenidos en el heap -> Menos rendimiento.
+* #include<vector>
+* Sintáxis: std::vector<tipo> nombre; \\ tipo puede ser una clase o un primitivo
+* Dos opciones: Que el tipo sea Clase o Clase*. ¿Cuál usar?
+** Poner Clase es mejor al iterar pues los objetos son consecutivos en memoria.
+** Poner Clase* es mejor al resizear pues sólo se mueven los punteros, no los objetos.
+
+### Métodos ###
+* vector[índice] \\ El operador está sobrecargado para acceder a los elementos
+* push_back(objeto); \\ Añadir elementos al final del vector
+* size(); \\ Devuelve la cantidad de elementos del vector
+* clear(); \\ Elimina todos los elementos
+* erase(iterador); \\ Elimina los elementos que determina el iterador (ojo, no un índice!)
+* begin(); \\ Un iterador, devuelve el primer elemento. Puedes poner e.g. 'begin() + 3'.
+
+### Optimización ###
+* 1) Aunque se cree el objeto dentro del vector, primero se crea en el stack correspondiente, y luego se copia a la memoria donde reside el vector. Optimización: Crear el objeto directamente en la memoria del vector.
+* std::vector<Clase> vector;
+* vector.emplace_back(parámetros); \\ Se le pasan los parámetros del constructor, no el objeto, y éste se crea en la memoria del vector directamente.
+
+* 2) Cada vez que el vector se resizea, hay que copiar todos los objetos. Por defecto se resizea uno a uno. Solución: Reservar más memoria al crear el vector. Otra idea sería resizear en intervalos más grandes para disminuir la frecuencia. Si podemos estimar la longitud que podrá tener el vector, o incluso la sabemos, mejor aún.
+* std::vector<Clase> vector;
+* vector.reserve(10); \\ El vector ahora tiene espacio para 10 objetos de Clase.
+
+\\ --- Multiple return values in functions ---
+
+* Si tenemos una función que debe devolver varias variables, incluso de varios tipos (digamos, un entero y un string) tenemos varias posibilidades, pero cuál es mejor?
+
+* 1) Tener un struct que represente el conjunto de datos que queremos devolver, y hacer la función de ese tpo.
+* 2.a) Pasar las variables en las que guardaríamos el resultado de la función como parámetros por referencia, y que ella se encargue de guardar el resultado ahí. La función en sí sería de tipo void.
+* 2.b) Pasar un puntero en lugar de una referencia. De este modo, podemos por ejemplo pasar nullptr, y en la función, entender esto como que no queremos modificar esa variable.
+* 3) Si todas son del mismo tipo, podemos devolver un array. Ya sea clásico, o std::array. Si el número puede ser variable, podemos usar un std::vector en su lugar.
+* 4) Devolver un std::tuple o un std::pair.
+
+La opción 2) sea quizá la más eficiente, aunque la opción 1) es la más sólida y clara. Las opciones 3) y 4) son rápidas, pero al referirnos a cada elemento por un índice en lugar de por nombre, es menos claro. Encima, 3) está limitado a variables del mismo tipo.
+
+\\ --- std::tuple y std::pair ---
+
+* std::tuple es una clase que guarda variables de posiblemente distinto tipo, como un array en el que los elementos pueden ser de distinto tipo, básicamente.
+* std::pair es un std::tuple de dos elementos.
+* Sintáxis para crear:
+#include<tuple> \\ std::tuple
+#include<utility> \\ std::pair
+std::pair<tipo1,tipo2> nombre = std::make_pair(cadena,numero); \\ e.g. std::tuple<std::string, int>
+* Sintáxis para leer y/o escribir:
+std::get<indice>(nombreTupla) = 50; \\ Sirve también para std::pair, aunque en ese caso tenemos otra opción:
+nombrePar.first = "Hola"; \\ Primer elemento de un par
+nombrePar.second = 10; \\ Segundo elemento de un par
+
+\\ --- templates ---
+
+* Son plantillas que reciben ciertos parámetros, que en el momento de compilación se proporcionan y el compilador genera el código apropiado.
+* Por tanto, puede que ralenticen la compilación pero mejoren la ejecución, aparte de ser cómodas.
+* Se pueden hacer plantillas de funciones, clases, etc.
+* Los parámetros pueden ser de cualquier tipo, uno habitual es precisame un typename (es decir, un tipo).
+* Para cada valor distinto de los parámetros de la plantilla, el compilador genera una sobrecarga nueva de la función, clase, o lo que sea.
+
+** Ejemplo: En lugar de sobrecargar una función muchas veces para distintos tipos de parámetro, creamos una template y pasamos el tipo como parámetro.
+
+* Sintáxis:
+template<typename T> // Se puede usar "class" en lugar de "typename"
+void Print(T value){
+  std::cout << value << std::endl;
+}
+Print<int>(5);
+Print(5); // C++ deduce el tipo de forma implícita del parámetro. También se puede deducir del tipo del valor de retorno.
+
+* Explicación: La función Print es sólo una plantilla, donde cada vez que aparece T, durante la compilación, se sustituirá por el tipo correspondiente.
+
+* Nota: Las templates son por tanto como polimorfismo en compile time. Como un metalenguaje.
+
+\\ --- macros ---
+
+* Usar el procesador para automatizar ciertas tareas de escritura de código fuente.
+* Por ejemplo, puede ser un "Buscar y reemplazar".
+* Es especialmente útil para debuguear el programa, o para inicializar ciertas variables.
+
+* Ejemplo: #define WAIT std::cin.get() // y lo usamos escribiendo WAIT; en nuestro código
+* Desde luego es una mierda de ejemplo.
+* Es habitual poner el ; en el código, no en el #define.
+* Cada instrucción del preprocesador debe ir en una línea. Se pueden usar \ para hacer macros de varias líneas.
+
+* Se pueden mandar parámetros
+* Ejemplo: #define LOG(x) std::cout << x << std::endl // lo usamos poniendo LOG("Hola");
+
+* Se pueden usar condicionales.
+* Ejemplo usual:
+#define DEBUG 0  // Lo podemos ir cambiando a 1 manualmente
+#if DEBUG == 1
+#define LOG(x) std::cout << x << std::endl
+#else
+#define LOG(x)   // Sólo logueamos en debug mode
+* Otra versión:
+#define DEBUG    // Habrá que eliminar esta línea en release mode
+#ifdef DEBUG
+#define LOG(x) std::cout << x << std::endl
+#else            // Podríamos usar #elif defined(RELEASE), por ejemplo
+#define LOG(x)   // Sólo logueamos en debug mode
+#endif
+
+* Podemos usarlo para desactivar bloques de código, como comentarlo:
+* Ejemplo:
+#if 0
+... código ...
+#endif
+
+* Hay ciertas variables predefinidas que nos dan información.
+* Ejemplo:
+#define INFO(x) std::cout << #x << __FILE__ << __LINE__ << std::endl;
+* Eso transforma x en un string (#x), y también imprime el archivo y la línea en la que se encuentra la llamada a INFO(x).
+
+\\ --- auto ---
+
+* Se puede usar en lugar del tipo de una variable, siempre que el compilador pueda deducirlo.
+* Por ejemplo, si una función devuelve un int, podemos guardar su retorno en una variable auto, y el compilador deducirá que dicha variable es de tipo int.
+* Defeats the purpose del strong typing.
+* Ejemplo: auto a = 5; // Se convierte en int a = 5;
+* Nota: Algunas cosas, como const, o &, siguen siendo necesarias de incluir (e.g. const auto& nombre = ...).
+
+* Contra: Si cambiamos el origen, digamos el tipo de una función, la asignación con auto no dará problemas, se ajustará, pero no así el resto del código, que si requiere modificaciones, puede que se nos olviden. SE PUEDE ROMPER CÓDIGO.
+* Pro: Si usamos auto al usar algo, digamos una librería, puede ser posible realizar ciertas alteraciones en la librería sin tener que modificar nuestro código usuario.
+* Pro: Permite resumir cuando los tipos a usar son muy largos y empeoran la legibilidad (aunque esto podríamos hacerlo con typedef o con using). Por ejemplo, con function pointers.
+* Nota: Hay casos, por ejemplo, con usos muy complejos de templates, donde puede ser necesario emplear auto. Pero es raro.
+
+* A partir de C++14, se puede usar auto como tipo de retorno de funciones.
+* En C++11 se podía ya usar, siempre que se proporcionasen "trailing return types".
+
+\\ --- namespaces ---
+
+* Objetivo: Evitar conflictos de nombramiento.
+* Es un entorno donde se pueden definir símbolos (variables, funciones, clases) sin que sus nombres interfieran con los símbolos del fuera.
+* Ejemplo: Podemos tener funciones con el mismo nombre y tipo, pero viviendo en distintos namespaces.
+* Podemos anidar namespaces.
+* Las clases declarar sus propios namespaces.
+* En C, donde esto no estaba, el convenio era prefijar el nombre del símbolo con el nombre de la librería, digamos libreriaFuncion, para que no interfiriera con otras funciones de nombre Funcion.
+
+* Para usar símbolos de un namespace concreto, usamos dos colons (Namespace::Simbolo).
+* Si empezamos con ::, estamos empezando con el namespace root.
+* Podemos especificar qué namespace estamos usando haciendo
+using namespace Nombre;
+Y entonces _en ese scope_ no hará falta usar ::, sino que los nombres se asumirá que son los del namespace Nombre.
+* Se pueden importan sólo subconjuntos, por ejemplo, using namespace std::cout.
+* Se pueden crear alias de namespaces: namespace a = std; y partir de entonces podemos usar a::cout; (sin using).
+
+\\ --- function pointers ---
+
+* Asignar funciones a variables.
+* Así podemos hacer lógica con ellas, en lugar de sólo llamarlas.
+* El principal uso, es que podemos así pasar funciones como parámetros a otras funciones.
+* Para pasar funciones sin tener que declararlas, podemos usar lambdas.
+
+* Sintáxis: Si tenemos una función llamada Funcion(), podemos crear un puntero así:
+** tipo(*nombre)(pars) = &Funcion; \\ Modo 1
+* Y se puede usar de manera normal:
+** nombre(pars);
+
+* Ejemplo:
+** int(*print)(std::string,int) = &Funcion;
+** int resultado = print("Hola",2);
+
+* El tipo es tipo(*)(pars).
+* Podemos resolver esta complejidad y evitarnos escribirlo de dos formas:
+** Usar auto:
+*** auto nombre = &Funcion;
+** Usar un alias:
+*** typedef tipo(*NombreTipo)(pars); \\ Creacion del alias
+*** NombreTipo nombre = Funcion;     \\ Uso del alias
+
+\\ --- lambdas ---
+
+* C++11
+* Son objetos que nos permiten definir funcionalidad sin tener que definir funciones independientes.
+* Son funciones anónimas, definidas en línea, sin tener que definirlas independientemente.
+* Al igual que function pointers, son variables que se refieren a comportamientos (funciones).
+* USO: Siempre que haya function pointers involucrados (por ejemplo, si una función recibe un function pointer), se le puede pasar un lambda.
+
+* Sintáxis: [capturas](parámetros){código de la función}
+* Capturas: Si el lambda emplea variables externas (no definidas dentro del propio lambda), ¿cómo se pasan? Esto se indica en las capturas. Si ponemos [=], todas las variables se pasan por copia, si ponemos [&], se pasan por referencia. Podemos especificar una a una, por ejemplo, [a&, b] pasaría la variable a por referencia y la b por valor.
+
+* Ejemplo:
+auto lamb = [](int value) { std::cout << "Value: " << value << std::endl; }
+Y entonces si tenemos una Función que recibe un vector y un function pointer, y ejecuta la función a cada elemento del vector, podríamos pasarle lamb para que ejecutase esa función.
+
+* Ejemplo: Usar find_if para iterar un vector y buscar el primer elemento que verifica cierta condición especificada por una función que toma como parámetro un elemento del vector y devuelve un booleano. find_if recibe 3 parámetros: el comienzo y final del rango, y la función a ejecutar.
+#include <algorithm>
+std::vector<int> values = { 1, 5, 4, 2, 3 };
+auto it = std::find_if(values.begin(), values.end(), [](int value){return value > 3;});
+// Y el resultado debería ser 5, el primer elemento del vector de ints que es mayor que 3.

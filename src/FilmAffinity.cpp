@@ -1,4 +1,5 @@
 #include <iostream>
+#include <array>
 #include <vector>
 #include "Net.hpp"
 #include "FilmAffinity.hpp"
@@ -33,14 +34,40 @@ const std::string FilmAffinity::Parse(const Node& root) {
       continue;
     } else if (field == "Año") {
       std::cout << String::num(field_table[i].Next().Next().Children()[0].Content()) << std::endl;
+      continue;
     } else if (field == "Duración") {
       std::cout << String::num(field_table[i].Next().Next().Children()[0].Content()) << std::endl;
+      continue;
     } else if (field == "País") {
       std::cout << String::stripc(field_table[i].Next().Next().Children()[0].Children()[0].Attribute("title")) << std::endl;
+      continue;
+    } else if (field == "Dirección") {
+      std::vector<Node> directors = field_table[i].Next().Next().Search(T, "a");
+      std::vector<std::string> names;
+      names.reserve(directors.size());
+      for (int i = 0; i < directors.size(); i++) {
+        names[i] = String::stripc(directors[i].Attribute("title"));
+        std::cout << names[i];
+        if (i < directors.size() - 1) std::cout << ", ";
+      }
+      std::cout << std::endl;
+      continue;
+    } else if (field == "Guion") {
+      std::vector<Node> writers = field_table[i].Next().Next().Search(V, "class", "nb");
+      std::vector<std::string> names;
+      names.reserve(writers.size());
+      for (int i = 0; i < writers.size(); i++) {
+        names[i] = String::stripc(writers[i].Children()[0].Children()[0].Content());
+        std::cout << names[i];
+        if (i < writers.size() - 1) std::cout << ", ";
+      }
+      std::cout << std::endl;
+      continue;
     }
 
     else {
       std::cout << String::stripc(field_table[i].Next().Next().Children()[0].Content()) << std::endl;
+      continue;
     }
   }
 
