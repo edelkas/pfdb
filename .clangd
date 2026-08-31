@@ -1,0 +1,11 @@
+# Editor (clangd) configuration.
+#
+# Prefer the real compile database emitted by CMake once you've configured a
+# preset (e.g. build/windows-msvc/compile_commands.json). The fallback flags
+# below keep headers resolving and the language standard correct even before
+# the first configure, so IDE diagnostics match how CMake actually builds.
+CompileFlags:
+  Add:
+    - -std=c++20
+    - -IC:/Users/Eduardo/programs/pfdb/include
+    - -IC:/Users/Eduardo/programs/pfdb/src

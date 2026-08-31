@@ -1,0 +1,15 @@
+# Baseline checks for PFDB. Kept pragmatic; tightened as the codebase grows.
+Checks: >
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  readability-*,
+  cppcoreguidelines-*,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*/(include|src)/pfdb/.*'
+FormatStyle: file

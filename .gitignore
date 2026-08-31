@@ -1,0 +1,32 @@
+# Build output
+/build/
+/out/
+/cmake-build-*/
+*.obj
+*.o
+*.exe
+*.pdb
+*.ilk
+
+# vcpkg
+/vcpkg_installed/
+
+# Local databases / scratch
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+/scratch/
+
+# IDE / editor
+/.vs/
+/.vscode/
+/.idea/
+*.user
+
+# Claude Code local session artifacts
+/.claude/
+
+# OS
+Thumbs.db
+.DS_Store

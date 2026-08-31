@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build & test (Windows / MSVC)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The windows-latest runner ships vcpkg preinstalled with VCPKG_ROOT set,
+      # plus CMake and Ninja. We just need the MSVC developer environment on PATH.
+      - name: Set up MSVC developer environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      # Cache vcpkg's built packages between runs (keyed on the manifest).
+      - name: Cache vcpkg binary packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.LOCALAPPDATA }}\vcpkg\archives
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'CMakePresets.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      - name: Configure
+        run: cmake --preset windows-msvc
+
+      - name: Build
+        run: cmake --build build/windows-msvc
+
+      - name: Test
+        run: ctest --preset windows-msvc
+
+  # A future job matrix (Linux/macOS) slots in here once those platforms are
+  # supported; the preset structure and portable code are already prepared for it.

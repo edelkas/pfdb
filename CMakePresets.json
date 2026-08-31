@@ -1,0 +1,75 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "displayName": "Windows (MSVC, Ninja)",
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "cl"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-clang",
+      "displayName": "Windows (clang, Ninja)",
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-msvc",
+      "configurePreset": "windows-msvc"
+    },
+    {
+      "name": "windows-clang",
+      "configurePreset": "windows-clang"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "windows-msvc",
+      "configurePreset": "windows-msvc",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-clang",
+      "configurePreset": "windows-clang",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
