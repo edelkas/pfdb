@@ -29,30 +29,56 @@ Safe to run repeatedly.
 pfdb init --db mycollection.db
 ```
 
-### `pfdb add`
+### `pfdb search`
 
-Add a film manually (no online lookup yet — that arrives with the source
-milestones).
+Search a source for films. Prints `id  title (year)  [type]` rows (the result
+count goes to stderr), or a JSON array with `--json`.
 
 | Option | Description |
 |---|---|
-| `--title` | **Required.** Film title. |
+| `query` | **Required.** Search text (positional). |
+| `--source` | Source to search. Default `imdb`. |
+
+```sh
+pfdb search "blade runner"
+pfdb search "blade runner" --json | jq -r '.[] | "\(.id)\t\(.title)"'
+```
+
+### `pfdb add`
+
+Add a film either by **fetching from a source** (`--imdb <id>`) or **manually**
+(`--title …`). When fetching, the manual flags below are layered *on top of* the
+fetched data (e.g. set your own `--favorite`/`--date-watched`, or override the
+`--title`).
+
+| Option | Description |
+|---|---|
+| `--imdb <ttID>` | Fetch from IMDb by title id (e.g. `tt0083658`). |
+| `--title` | Film title. **Required for a manual add**; overrides the fetched title. |
 | `--original-title` | Original-language title. |
-| `--year` | Release year. |
+| `--year` | Release year (overrides fetched). |
 | `--runtime` | Runtime in minutes. |
 | `--synopsis` | Plot synopsis. |
-| `--genre` | A genre; repeat the flag for several. |
+| `--genre` | A genre; repeat for several (appended to fetched genres). |
 | `--date-watched` | Date watched, `YYYY-MM-DD`. |
 | `--rating` | Your personal rating (0–10). |
 | `--notes` | Free-form notes. |
 | `--favorite` | Mark as a favourite. |
+| `--dry-run` | Fetch/build the film and print it, but do not save. |
 
 ```sh
-pfdb add --db mycollection.db --title "Blade Runner" --year 1982 \
-         --genre Sci-Fi --genre Thriller --favorite
+# Fetch from IMDb, then add your own data on top:
+pfdb add --imdb tt0083658 --favorite --date-watched 2024-05-01
+
+# Preview what would be fetched, without saving:
+pfdb add --imdb tt0083658 --dry-run --json
+
+# Manual add (no lookup):
+pfdb add --title "Blade Runner" --year 1982 --genre Sci-Fi --favorite
 ```
 
-With `--json`, prints the stored film (including its new id) as a JSON object.
+With `--json`, prints the resulting film (including its new id) as a JSON object.
+Fetching uses IMDb's JSON backends — see [sources/imdb.md](sources/imdb.md).
 
 ### `pfdb list`
 

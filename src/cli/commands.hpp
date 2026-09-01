@@ -36,11 +36,23 @@ struct AddArgs {
     std::optional<double> personal_rating;
     std::string notes;
     bool favorite = false;
+
+    // Online-fetch path. When an external id is given the film is fetched from a
+    // source and the manual fields above are layered on top of the result.
+    std::optional<std::string> imdb_id;  // --imdb <ttID>
+    bool dry_run = false;                // fetch/build but do not save
+};
+
+/// Fields accepted by `pfdb search`.
+struct SearchArgs {
+    std::string query;
+    std::string source = "imdb";
 };
 
 int cmd_init(const GlobalOptions& opts);
 int cmd_add(const GlobalOptions& opts, const AddArgs& args);
 int cmd_list(const GlobalOptions& opts);
 int cmd_remove(const GlobalOptions& opts, Id id);
+int cmd_search(const GlobalOptions& opts, const SearchArgs& args);
 
 }  // namespace pfdb::cli

@@ -25,7 +25,7 @@ never depends on any specific website.
 +-----------------------------------------------------------+
 ```
 
-## Current modules (M1)
+## Current modules
 
 | Directory | Namespace | Responsibility |
 |---|---|---|
@@ -33,6 +33,9 @@ never depends on any specific website.
 | `src/domain/` | `pfdb` | Small bits of domain logic (e.g. credit-role tokens). |
 | `src/db/` | `pfdb::db` | `Repository`: the only component that speaks SQL. |
 | `src/model/` | `pfdb` | `CollectionModel`: the in-memory, indexed collection. |
+| `src/net/` | `pfdb::net` | `IHttpClient` + cpr-backed implementation (the fetch seam). |
+| `src/sources/` | `pfdb::sources` | `ISource` plugin interface, registry, and the IMDb source (fetch) + parser (pure). |
+| `src/app/` | `pfdb::app` | Enrichment: layering user data onto fetched films (merge in M3). |
 | `src/io/` | `pfdb` | Serialization (JSON now; CSV/XLS later). |
 | `src/cli/` | `pfdb::cli` | CLI11 front-end. |
 
@@ -46,10 +49,11 @@ never depends on any specific website.
 - **Load-all into memory.** `CollectionModel::load()` reads the whole collection
   once so that filtering/sorting/searching run against RAM. `Repository` groups
   related rows in a single pass per table to avoid N+1 queries.
-- **Source plugins (future).** Each website will implement an `ISource`
-  (`search` / `fetch` / `parse`). Fetchers do I/O; parsers are pure functions
-  over raw documents so they can be unit-tested against saved fixtures. See
-  [testing.md](testing.md).
+- **Source plugins.** Each website implements `ISource` (`search` / `fetch`).
+  Fetching goes through the injectable `net::IHttpClient`; parsing is done by
+  pure free functions so it can be unit-tested against saved fixtures with a mock
+  client. IMDb is the first source. See [sources/writing-a-source.md](sources/writing-a-source.md)
+  and [testing.md](testing.md).
 
 ## Data flow: `pfdb add`
 

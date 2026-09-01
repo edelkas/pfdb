@@ -6,6 +6,11 @@ add_library(pfdb_core STATIC
     db/repository.cpp
     model/collection_model.cpp
     io/film_json.cpp
+    net/http_client.cpp
+    sources/imdb/imdb_parser.cpp
+    sources/imdb/imdb_source.cpp
+    sources/source_registry.cpp
+    app/enrichment.cpp
 )
 
 target_include_directories(pfdb_core
@@ -21,6 +26,7 @@ target_link_libraries(pfdb_core
     PRIVATE
         SQLiteCpp
         spdlog::spdlog
+        cpr::cpr
         pfdb_warnings
 )
 
