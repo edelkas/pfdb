@@ -113,6 +113,69 @@ TEST_CASE("remove deletes the film and cascades", "[db]") {
     REQUIRE_FALSE(repo.remove(id));  // second remove is a no-op
 }
 
+TEST_CASE("FilmAffinity fields, topics and groups round-trip", "[db]") {
+    db::Repository repo(":memory:");
+    Film f;
+    f.title = "Blade Runner";
+    f.spanish_title = "Blade Runner";
+    f.spanish_synopsis = "Noviembre de 2019...";
+    f.review_count = 642;
+    f.topics = {"Neo-noir", "Thriller futurista"};
+    f.groups = {"Adaptaciones de Philip K. Dick"};
+
+    const Id id = repo.insert(f);
+    const auto loaded = repo.find(id);
+    REQUIRE(loaded.has_value());
+    REQUIRE(loaded->spanish_title == "Blade Runner");
+    REQUIRE(loaded->spanish_synopsis == "Noviembre de 2019...");
+    REQUIRE(loaded->review_count == 642);
+    REQUIRE(loaded->topics == std::vector<std::string>{"Neo-noir", "Thriller futurista"});
+    REQUIRE(loaded->groups == std::vector<std::string>{"Adaptaciones de Philip K. Dick"});
+}
+
+TEST_CASE("find_id_by_source_ref locates a film by external id", "[db]") {
+    db::Repository repo(":memory:");
+    Film f;
+    f.title = "Blade Runner";
+    f.source_refs.push_back({"filmaffinity", "358476", std::nullopt});
+    const Id id = repo.insert(f);
+
+    REQUIRE(repo.find_id_by_source_ref("filmaffinity", "358476") == id);
+    REQUIRE_FALSE(repo.find_id_by_source_ref("filmaffinity", "999").has_value());
+    REQUIRE_FALSE(repo.find_id_by_source_ref("imdb", "358476").has_value());
+}
+
+TEST_CASE("relation and similarity edges store, read and cascade", "[db]") {
+    db::Repository repo(":memory:");
+    Film a;
+    a.title = "Blade Runner";
+    const Id ia = repo.insert(a);
+    Film b;
+    b.title = "Blade Runner 2049";
+    const Id ib = repo.insert(b);
+
+    repo.replace_relations(ia, {{ib, "tiene secuela"}});
+    const auto rels = repo.relations_of(ia);
+    REQUIRE(rels.size() == 1);
+    REQUIRE(rels[0].other_id == ib);
+    REQUIRE(rels[0].kind == "tiene secuela");
+
+    repo.replace_similarities(ia, {{ib, 80}});
+    const auto sims = repo.similarities_of(ia);
+    REQUIRE(sims.size() == 1);
+    REQUIRE(sims[0].other_id == ib);
+    REQUIRE(sims[0].percent == 80);
+    // Similarity is undirected: readable from the other endpoint too.
+    const auto sims_b = repo.similarities_of(ib);
+    REQUIRE(sims_b.size() == 1);
+    REQUIRE(sims_b[0].other_id == ia);
+
+    // Deleting a film cascades its edges away.
+    REQUIRE(repo.remove(ia));
+    REQUIRE(repo.relations_of(ia).empty());
+    REQUIRE(repo.similarities_of(ib).empty());
+}
+
 TEST_CASE("load_all returns every film fully populated", "[db]") {
     db::Repository repo(":memory:");
     repo.insert(sample_film());

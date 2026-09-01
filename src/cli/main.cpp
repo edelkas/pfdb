@@ -35,6 +35,8 @@ int main(int argc, char** argv) {
     auto* add = app.add_subcommand(
         "add", "Add a film: fetch from IMDb (--imdb) or enter manually (--title)");
     add->add_option("--imdb", add_args.imdb_id, "Fetch from IMDb by title id, e.g. tt0083658");
+    add->add_option("--fa", add_args.fa_id,
+                    "Fetch from FilmAffinity by id, e.g. 358476 (combine with --imdb)");
     add->add_option("--title", add_args.title,
                     "Film title (required for a manual add; overrides fetched title)");
     add->add_option("--original-title", add_args.original_title,
@@ -59,6 +61,13 @@ int main(int argc, char** argv) {
     search->add_option("--source", search_args.source, "Source to search")
         ->capture_default_str();
 
+    // --- update ---
+    UpdateArgs update_args;
+    auto* update = app.add_subcommand(
+        "update", "Re-fetch a film's sources to refresh scores/relations (keeps your data)");
+    update->add_option("id", update_args.id, "Film id to update");
+    update->add_flag("--all", update_args.all, "Update every film in the collection");
+
     // --- list ---
     auto* list = app.add_subcommand("list", "List films in the collection");
 
@@ -68,7 +77,7 @@ int main(int argc, char** argv) {
     remove->add_option("id", remove_id, "Film id to remove")->required();
 
     // Let global options given after the subcommand fall through to the parent.
-    for (auto* sub : std::array{init, add, search, list, remove}) {
+    for (auto* sub : std::array{init, add, search, update, list, remove}) {
         sub->fallthrough();
     }
 
@@ -82,6 +91,9 @@ int main(int argc, char** argv) {
     }
     if (search->parsed()) {
         return cmd_search(gopts, search_args);
+    }
+    if (update->parsed()) {
+        return cmd_update(gopts, update_args);
     }
     if (list->parsed()) {
         return cmd_list(gopts);

@@ -8,6 +8,11 @@ add_executable(pfdb_tests
     unit/test_imdb_parser.cpp
     unit/test_imdb_source.cpp
     unit/test_imdb_live.cpp
+    unit/test_html.cpp
+    unit/test_fa_parser.cpp
+    unit/test_fa_source.cpp
+    unit/test_fa_live.cpp
+    unit/test_merge.cpp
 )
 
 # Tests reach into the internal headers under src/ (Repository, CollectionModel,

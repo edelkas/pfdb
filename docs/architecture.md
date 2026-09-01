@@ -34,8 +34,9 @@ never depends on any specific website.
 | `src/db/` | `pfdb::db` | `Repository`: the only component that speaks SQL. |
 | `src/model/` | `pfdb` | `CollectionModel`: the in-memory, indexed collection. |
 | `src/net/` | `pfdb::net` | `IHttpClient` + cpr-backed implementation (the fetch seam). |
-| `src/sources/` | `pfdb::sources` | `ISource` plugin interface, registry, and the IMDb source (fetch) + parser (pure). |
-| `src/app/` | `pfdb::app` | Enrichment: layering user data onto fetched films (merge in M3). |
+| `src/parse/` | `pfdb::parse` | `HtmlDocument`: a lexbor-backed HTML/CSS-selector wrapper for HTML sources. |
+| `src/sources/` | `pfdb::sources` | `ISource` plugin interface, registry, and the IMDb (JSON) + FilmAffinity (HTML) sources — each a fetcher plus pure parsers. |
+| `src/app/` | `pfdb::app` | Enrichment: two-source merge (IMDb wins shared fields) and layering user data onto fetched films. |
 | `src/io/` | `pfdb` | Serialization (JSON now; CSV/XLS later). |
 | `src/cli/` | `pfdb::cli` | CLI11 front-end. |
 

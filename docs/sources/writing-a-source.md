@@ -52,6 +52,10 @@ the site changes, refresh the fixture, read the diff, fix the parser.
    mock-driven source test. Add a hidden `[.<name>-live]` test for the real site.
 5. Document the endpoints and field mapping in `docs/sources/<name>.md`.
 
-See [imdb.md](imdb.md) for a worked example. Note that not every source will be
-pure JSON like IMDb — HTML sources (FilmAffinity) will add an HTML parser and CSS
-selectors, but the fetch/parse split and fixture testing stay exactly the same.
+See [imdb.md](imdb.md) for a pure-JSON example and [filmaffinity.md](filmaffinity.md)
+for an HTML one. HTML sources parse with the lexbor-backed `parse::HtmlDocument`
+(CSS selectors — remember to quote attribute values containing `.` or `:`, e.g.
+`a[href*="movietopic.php"]`), and a source may fetch more than one page per title
+(FilmAffinity fetches the film page and a separate relations page) and return
+film-to-film edges in its `SourceFetch`. The fetch/parse split and fixture testing
+stay exactly the same.

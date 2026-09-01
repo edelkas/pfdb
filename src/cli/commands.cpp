@@ -84,26 +84,75 @@ int exit_for(const sources::SourceError& e) {
     return e.kind() == sources::SourceError::Kind::NotFound ? kNotFound : kRuntimeError;
 }
 
-/// Fetch a film from a source by external id, applying manual overrides. On
-/// failure prints a message and sets `exit_code`; returns nullopt.
-std::optional<Film> fetch_film(const AddArgs& args, const std::string& source_id,
-                               const std::string& external_id, int& exit_code) {
-    net::CprHttpClient http;
+/// Fetch one source by external id (throws SourceError on failure).
+sources::SourceFetch fetch_one(net::IHttpClient& http, const std::string& source_id,
+                               const std::string& external_id) {
     std::unique_ptr<sources::ISource> source = sources::make_source(source_id, http);
     if (!source) {
-        std::cerr << "error: unknown source '" << source_id << "'\n";
-        exit_code = kUsageError;
-        return std::nullopt;
+        throw sources::SourceError(sources::SourceError::Kind::Network,
+                                   "unknown source '" + source_id + "'");
     }
+    return source->fetch(external_id);
+}
+
+/// A film built from one or more sources, plus the FilmAffinity edge data that
+/// must be resolved to collection films after the film is saved.
+struct BuiltFilm {
+    Film film;
+    std::vector<sources::RelatedRef> relations;
+    std::vector<sources::SimilarRef> similars;
+};
+
+/// Fetch every source id present in `imdb_id`/`fa_id`, merge them, and return the
+/// combined film + edges. On failure prints a message, sets `exit_code`, returns
+/// nullopt. `apply_user` layers the manual `add` flags on top (skip for update).
+std::optional<BuiltFilm> build_from_sources(net::IHttpClient& http,
+                                            const std::optional<std::string>& imdb_id,
+                                            const std::optional<std::string>& fa_id,
+                                            int& exit_code) {
     try {
-        Film film = source->fetch(external_id);
-        app::apply_overrides(film, overrides_from(args));
-        return film;
+        std::optional<Film> imdb_film;
+        std::optional<Film> fa_film;
+        BuiltFilm built;
+        if (imdb_id.has_value()) {
+            sources::SourceFetch f = fetch_one(http, "imdb", *imdb_id);
+            imdb_film = std::move(f.film);
+        }
+        if (fa_id.has_value()) {
+            sources::SourceFetch f = fetch_one(http, "filmaffinity", *fa_id);
+            fa_film = std::move(f.film);
+            built.relations = std::move(f.relations);
+            built.similars = std::move(f.similars);
+        }
+        built.film = app::merge_films(imdb_film, fa_film);
+        return built;
     } catch (const sources::SourceError& e) {
         std::cerr << "error: " << e.what() << '\n';
         exit_code = exit_for(e);
         return std::nullopt;
     }
+}
+
+/// Resolve FilmAffinity edge refs to collection film ids (keeping only pairs
+/// already in the database) and store them for `film_id`.
+void store_edges(db::Repository& repo, Id film_id,
+                 const std::vector<sources::RelatedRef>& relations,
+                 const std::vector<sources::SimilarRef>& similars) {
+    std::vector<db::Repository::RelationEdge> rel_edges;
+    for (const auto& r : relations) {
+        if (auto other = repo.find_id_by_source_ref("filmaffinity", r.external_id)) {
+            rel_edges.push_back({*other, r.kind});
+        }
+    }
+    repo.replace_relations(film_id, rel_edges);
+
+    std::vector<db::Repository::SimilarityEdge> sim_edges;
+    for (const auto& s : similars) {
+        if (auto other = repo.find_id_by_source_ref("filmaffinity", s.external_id)) {
+            sim_edges.push_back({*other, s.percent});
+        }
+    }
+    repo.replace_similarities(film_id, sim_edges);
 }
 
 }  // namespace
@@ -126,19 +175,25 @@ int cmd_init(const GlobalOptions& opts) {
 }
 
 int cmd_add(const GlobalOptions& opts, const AddArgs& args) {
-    // Build the film either by fetching from a source or from manual flags.
+    const bool fetch_path = args.imdb_id.has_value() || args.fa_id.has_value();
+
+    // Build the film either by fetching from source(s) or from manual flags.
     Film film;
-    if (args.imdb_id.has_value()) {
+    BuiltFilm built;
+    if (fetch_path) {
+        net::CprHttpClient http;
         int exit_code = kOk;
-        std::optional<Film> fetched = fetch_film(args, "imdb", *args.imdb_id, exit_code);
-        if (!fetched) {
+        auto result = build_from_sources(http, args.imdb_id, args.fa_id, exit_code);
+        if (!result) {
             return exit_code;
         }
-        film = std::move(*fetched);
+        built = std::move(*result);
+        app::apply_overrides(built.film, overrides_from(args));
+        film = built.film;
     } else {
         if (args.title.empty()) {
-            std::cerr << "error: provide --title for a manual add, "
-                         "or --imdb <id> to fetch from IMDb\n";
+            std::cerr << "error: provide --title for a manual add, or --imdb/--fa "
+                         "to fetch from a source\n";
             return kUsageError;
         }
         film = to_film(args);
@@ -163,6 +218,7 @@ int cmd_add(const GlobalOptions& opts, const AddArgs& args) {
     }
     try {
         const Id id = repo->insert(film);
+        store_edges(*repo, id, built.relations, built.similars);
         const auto stored = repo->find(id);
         if (opts.json && stored) {
             std::cout << to_json(*stored).dump(2) << '\n';
@@ -186,7 +242,25 @@ int cmd_list(const GlobalOptions& opts) {
     if (opts.json) {
         nlohmann::json arr = nlohmann::json::array();
         for (const auto& f : model.all()) {
-            arr.push_back(to_json(f));
+            nlohmann::json obj = to_json(f);
+            // Attach the film-to-film edges (resolved against the collection).
+            nlohmann::json relations = nlohmann::json::array();
+            for (const auto& e : repo->relations_of(f.id)) {
+                const Film* other = model.find(e.other_id);
+                relations.push_back({{"id", e.other_id},
+                                     {"title", other != nullptr ? other->title : ""},
+                                     {"kind", e.kind}});
+            }
+            obj["relations"] = std::move(relations);
+            nlohmann::json similars = nlohmann::json::array();
+            for (const auto& e : repo->similarities_of(f.id)) {
+                const Film* other = model.find(e.other_id);
+                similars.push_back({{"id", e.other_id},
+                                    {"title", other != nullptr ? other->title : ""},
+                                    {"percent", e.percent}});
+            }
+            obj["similarities"] = std::move(similars);
+            arr.push_back(std::move(obj));
         }
         std::cout << arr.dump(2) << '\n';
     } else {
@@ -218,6 +292,88 @@ int cmd_remove(const GlobalOptions& opts, Id id) {
         std::cerr << "error: failed to remove film: " << e.what() << '\n';
         return kRuntimeError;
     }
+}
+
+namespace {
+
+std::optional<std::string> ref_for(const Film& film, const std::string& source) {
+    for (const auto& ref : film.source_refs) {
+        if (ref.source == source) {
+            return ref.external_id;
+        }
+    }
+    return std::nullopt;
+}
+
+/// Re-fetch one film's sources and update it in place, preserving all
+/// user-specific data. Returns an exit code; `updated` is incremented on change.
+int update_one(db::Repository& repo, net::IHttpClient& http, const Film& existing,
+               int& updated) {
+    const auto imdb_id = ref_for(existing, "imdb");
+    const auto fa_id = ref_for(existing, "filmaffinity");
+    if (!imdb_id.has_value() && !fa_id.has_value()) {
+        std::cerr << "note: film #" << existing.id
+                  << " has no online sources; skipping\n";
+        return kOk;
+    }
+
+    int exit_code = kOk;
+    auto result = build_from_sources(http, imdb_id, fa_id, exit_code);
+    if (!result) {
+        return exit_code;
+    }
+
+    // Refresh sourced fields but keep the user's own data untouched.
+    Film refreshed = std::move(result->film);
+    refreshed.id = existing.id;
+    refreshed.created_at = existing.created_at;
+    refreshed.user = existing.user;
+    refreshed.video = existing.video;
+
+    if (!repo.update(refreshed)) {
+        std::cerr << "error: failed to update film #" << existing.id << '\n';
+        return kRuntimeError;
+    }
+    store_edges(repo, existing.id, result->relations, result->similars);
+    ++updated;
+    return kOk;
+}
+
+}  // namespace
+
+int cmd_update(const GlobalOptions& opts, const UpdateArgs& args) {
+    if (!args.all && args.id == kInvalidId) {
+        std::cerr << "error: provide a film id, or --all to update everything\n";
+        return kUsageError;
+    }
+    auto repo = open_repo(opts);
+    if (!repo) {
+        return kRuntimeError;
+    }
+
+    std::vector<Film> targets;
+    if (args.all) {
+        targets = repo->load_all();
+    } else {
+        auto film = repo->find(args.id);
+        if (!film) {
+            std::cerr << "error: no film with id " << args.id << '\n';
+            return kNotFound;
+        }
+        targets.push_back(std::move(*film));
+    }
+
+    net::CprHttpClient http;
+    int updated = 0;
+    int worst = kOk;
+    for (const auto& film : targets) {
+        const int rc = update_one(*repo, http, film, updated);
+        if (rc != kOk) {
+            worst = rc;  // keep going, but remember the failure
+        }
+    }
+    std::cerr << "Updated " << updated << " film(s).\n";
+    return worst;
 }
 
 int cmd_search(const GlobalOptions& opts, const SearchArgs& args) {

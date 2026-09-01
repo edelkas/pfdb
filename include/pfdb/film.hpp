@@ -34,6 +34,18 @@ struct Film {
     std::string synopsis;
     std::vector<std::string> genres;
 
+    // --- Localized (FilmAffinity) metadata ---
+    /// Spanish title, when a source (FilmAffinity) provides one.
+    std::string spanish_title;
+    /// Spanish synopsis.
+    std::string spanish_synopsis;
+    /// Number of user reviews behind the score (FilmAffinity "críticas" count).
+    std::optional<int> review_count;
+    /// FilmAffinity "temas": finer-grained tags than genres (e.g. "Neo-noir").
+    std::vector<std::string> topics;
+    /// FilmAffinity groups/sagas (e.g. "Adaptaciones de Philip K. Dick").
+    std::vector<std::string> groups;
+
     // --- People ---
     std::vector<Credit> credits;
 

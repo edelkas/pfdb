@@ -54,6 +54,7 @@ fetched data (e.g. set your own `--favorite`/`--date-watched`, or override the
 | Option | Description |
 |---|---|
 | `--imdb <ttID>` | Fetch from IMDb by title id (e.g. `tt0083658`). |
+| `--fa <faId>` | Fetch from FilmAffinity by id (e.g. `358476`). Combine with `--imdb` to merge both (IMDb wins shared fields; FA adds Spanish title/synopsis, its rating, review count, topics, groups, relations, similarities). |
 | `--title` | Film title. **Required for a manual add**; overrides the fetched title. |
 | `--original-title` | Original-language title. |
 | `--year` | Release year (overrides fetched). |
@@ -67,8 +68,8 @@ fetched data (e.g. set your own `--favorite`/`--date-watched`, or override the
 | `--dry-run` | Fetch/build the film and print it, but do not save. |
 
 ```sh
-# Fetch from IMDb, then add your own data on top:
-pfdb add --imdb tt0083658 --favorite --date-watched 2024-05-01
+# Combine IMDb + FilmAffinity, then add your own data on top:
+pfdb add --imdb tt0083658 --fa 358476 --favorite --date-watched 2024-05-01
 
 # Preview what would be fetched, without saving:
 pfdb add --imdb tt0083658 --dry-run --json
@@ -78,7 +79,29 @@ pfdb add --title "Blade Runner" --year 1982 --genre Sci-Fi --favorite
 ```
 
 With `--json`, prints the resulting film (including its new id) as a JSON object.
-Fetching uses IMDb's JSON backends — see [sources/imdb.md](sources/imdb.md).
+Fetching uses the sources' own backends — see [sources/imdb.md](sources/imdb.md)
+and [sources/filmaffinity.md](sources/filmaffinity.md).
+
+Relation and similarity edges are stored only between films that are **both** in
+the collection, so adding both a film and its sequel links them. Because
+FilmAffinity relations are reciprocal, adding the second film records the pair;
+`pfdb update` (below) backfills the first film's side.
+
+### `pfdb update`
+
+Re-fetch a film's sources and refresh the data that changes over time (scores,
+votes, review counts, topics, relations, similarities) **without touching your
+own data** (favourite, date watched, personal rating, notes, video file).
+
+| Option | Description |
+|---|---|
+| `id` | Film id to update (positional). |
+| `--all` | Update every film in the collection instead. |
+
+```sh
+pfdb update 1          # refresh one film
+pfdb update --all      # refresh the whole collection
+```
 
 ### `pfdb list`
 

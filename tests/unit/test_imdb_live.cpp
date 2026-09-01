@@ -17,7 +17,7 @@ TEST_CASE("live IMDb search + fetch", "[.imdb-live]") {
     REQUIRE_FALSE(results.empty());
     REQUIRE(results[0].external_id == "tt0083658");
 
-    const Film f = src.fetch("tt0083658");
+    const Film f = src.fetch("tt0083658").film;
     REQUIRE(f.title == "Blade Runner");
     REQUIRE(f.year == 1982);
     REQUIRE_FALSE(f.credits.empty());

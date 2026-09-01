@@ -22,6 +22,30 @@ struct SearchResult {
     std::string image_url;
 };
 
+/// A film related to the fetched one, identified by the source's own id. The
+/// `kind` is the source's relationship label (e.g. FilmAffinity's "tiene
+/// secuela"); empty when the source expresses no type.
+struct RelatedRef {
+    std::string external_id;
+    std::string kind;
+};
+
+/// A film similar to the fetched one, with the source's similarity percentage.
+struct SimilarRef {
+    std::string external_id;
+    int percent = 0;
+};
+
+/// Everything a source returns for one title: the film itself plus film-to-film
+/// edges (relations, similarities) the source knows about. Edge targets are the
+/// *source's* ids; resolving them to collection films (and keeping only pairs
+/// already in the database) happens in the app/persistence layer.
+struct SourceFetch {
+    Film film;
+    std::vector<RelatedRef> relations;
+    std::vector<SimilarRef> similars;
+};
+
 /// Raised by sources on failure. `kind` lets the CLI map to an exit code and
 /// message without matching on strings.
 class SourceError : public std::runtime_error {
@@ -53,9 +77,10 @@ public:
     /// Search the source for `query`, returning candidate titles.
     virtual std::vector<SearchResult> search(std::string_view query) = 0;
 
-    /// Fetch and parse the full film identified by `external_id`. Throws
-    /// SourceError{NotFound} if the id has no title.
-    virtual Film fetch(std::string_view external_id) = 0;
+    /// Fetch and parse the full film identified by `external_id`, along with any
+    /// relation/similarity edges the source exposes. Throws SourceError{NotFound}
+    /// if the id has no title.
+    virtual SourceFetch fetch(std::string_view external_id) = 0;
 };
 
 }  // namespace pfdb::sources

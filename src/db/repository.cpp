@@ -1,5 +1,6 @@
 #include "db/repository.hpp"
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <stdexcept>
@@ -81,6 +82,42 @@ constexpr std::array kMigrations = {
             height           INTEGER,
             codec            TEXT    NOT NULL DEFAULT ''
         );
+    )sql",
+    // v1 -> v2: FilmAffinity fields, topics/groups tags, and film-to-film edges.
+    R"sql(
+        ALTER TABLE films ADD COLUMN spanish_title    TEXT NOT NULL DEFAULT '';
+        ALTER TABLE films ADD COLUMN spanish_synopsis TEXT NOT NULL DEFAULT '';
+        ALTER TABLE films ADD COLUMN review_count     INTEGER;
+
+        CREATE TABLE topics (
+            film_id INTEGER NOT NULL REFERENCES films(id) ON DELETE CASCADE,
+            topic   TEXT    NOT NULL,
+            ord     INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX idx_topics_film ON topics(film_id);
+
+        CREATE TABLE movie_groups (
+            film_id INTEGER NOT NULL REFERENCES films(id) ON DELETE CASCADE,
+            name    TEXT    NOT NULL,
+            ord     INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX idx_movie_groups_film ON movie_groups(film_id);
+
+        CREATE TABLE relations (
+            from_id INTEGER NOT NULL REFERENCES films(id) ON DELETE CASCADE,
+            to_id   INTEGER NOT NULL REFERENCES films(id) ON DELETE CASCADE,
+            kind    TEXT    NOT NULL DEFAULT '',
+            PRIMARY KEY (from_id, to_id)
+        );
+        CREATE INDEX idx_relations_to ON relations(to_id);
+
+        CREATE TABLE similarities (
+            a_id    INTEGER NOT NULL REFERENCES films(id) ON DELETE CASCADE,
+            b_id    INTEGER NOT NULL REFERENCES films(id) ON DELETE CASCADE,
+            percent INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (a_id, b_id)
+        );
+        CREATE INDEX idx_similarities_b ON similarities(b_id);
     )sql",
 };
 
@@ -198,6 +235,30 @@ void Repository::write_related(Id film_id, const Film& film) {
     }
     {
         SQLite::Statement stmt(
+            *db_, "INSERT INTO topics(film_id, topic, ord) VALUES(?, ?, ?)");
+        int ord = 0;
+        for (const auto& topic : film.topics) {
+            stmt.bind(1, film_id);
+            stmt.bind(2, topic);
+            stmt.bind(3, ord++);
+            stmt.exec();
+            stmt.reset();
+        }
+    }
+    {
+        SQLite::Statement stmt(
+            *db_, "INSERT INTO movie_groups(film_id, name, ord) VALUES(?, ?, ?)");
+        int ord = 0;
+        for (const auto& group : film.groups) {
+            stmt.bind(1, film_id);
+            stmt.bind(2, group);
+            stmt.bind(3, ord++);
+            stmt.exec();
+            stmt.reset();
+        }
+    }
+    {
+        SQLite::Statement stmt(
             *db_,
             "INSERT INTO credits(film_id, person_id, role, character, ord) "
             "VALUES(?, ?, ?, ?, ?)");
@@ -259,8 +320,8 @@ void Repository::write_related(Id film_id, const Film& film) {
 }
 
 void Repository::delete_related(Id film_id) {
-    for (const char* table :
-         {"genres", "credits", "ratings", "source_refs", "video_files"}) {
+    for (const char* table : {"genres", "topics", "movie_groups", "credits", "ratings",
+                              "source_refs", "video_files"}) {
         SQLite::Statement stmt(*db_,
                                std::string("DELETE FROM ") + table + " WHERE film_id = ?");
         stmt.bind(1, film_id);
@@ -276,7 +337,8 @@ Id Repository::insert(const Film& film) {
             *db_,
             "INSERT INTO films(title, original_title, year, runtime_minutes, "
             "synopsis, date_watched, personal_rating, notes, favorite, "
-            "created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            "created_at, updated_at, spanish_title, spanish_synopsis, review_count) "
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         stmt.bind(1, film.title);
         stmt.bind(2, film.original_title);
         bind_opt(stmt, 3, film.year);
@@ -288,6 +350,9 @@ Id Repository::insert(const Film& film) {
         stmt.bind(9, film.user.favorite ? 1 : 0);
         stmt.bind(10, ts);
         stmt.bind(11, ts);
+        stmt.bind(12, film.spanish_title);
+        stmt.bind(13, film.spanish_synopsis);
+        bind_opt(stmt, 14, film.review_count);
         stmt.exec();
     }
     const Id film_id = db_->getLastInsertRowid();
@@ -305,7 +370,8 @@ bool Repository::update(const Film& film) {
             *db_,
             "UPDATE films SET title=?, original_title=?, year=?, runtime_minutes=?, "
             "synopsis=?, date_watched=?, personal_rating=?, notes=?, favorite=?, "
-            "updated_at=? WHERE id=?");
+            "updated_at=?, spanish_title=?, spanish_synopsis=?, review_count=? "
+            "WHERE id=?");
         stmt.bind(1, film.title);
         stmt.bind(2, film.original_title);
         bind_opt(stmt, 3, film.year);
@@ -316,7 +382,10 @@ bool Repository::update(const Film& film) {
         stmt.bind(8, film.user.notes);
         stmt.bind(9, film.user.favorite ? 1 : 0);
         stmt.bind(10, ts);
-        stmt.bind(11, film.id);
+        stmt.bind(11, film.spanish_title);
+        stmt.bind(12, film.spanish_synopsis);
+        bind_opt(stmt, 13, film.review_count);
+        stmt.bind(14, film.id);
         changed = stmt.exec();
     }
     if (changed == 0) {
@@ -355,12 +424,16 @@ Film read_film_row(SQLite::Statement& stmt) {
     f.user.favorite = stmt.getColumn(9).getInt() != 0;
     f.created_at = get_opt_int64(stmt, 10);
     f.updated_at = get_opt_int64(stmt, 11);
+    f.spanish_title = stmt.getColumn(12).getString();
+    f.spanish_synopsis = stmt.getColumn(13).getString();
+    f.review_count = get_opt_int(stmt, 14);
     return f;
 }
 
 constexpr const char* kFilmColumns =
     "id, title, original_title, year, runtime_minutes, synopsis, date_watched, "
-    "personal_rating, notes, favorite, created_at, updated_at";
+    "personal_rating, notes, favorite, created_at, updated_at, "
+    "spanish_title, spanish_synopsis, review_count";
 
 }  // namespace
 
@@ -379,6 +452,22 @@ std::optional<Film> Repository::find(Id id) const {
         q.bind(1, id);
         while (q.executeStep()) {
             f.genres.emplace_back(q.getColumn(0).getString());
+        }
+    }
+    {
+        SQLite::Statement q(*db_,
+                            "SELECT topic FROM topics WHERE film_id = ? ORDER BY ord");
+        q.bind(1, id);
+        while (q.executeStep()) {
+            f.topics.emplace_back(q.getColumn(0).getString());
+        }
+    }
+    {
+        SQLite::Statement q(
+            *db_, "SELECT name FROM movie_groups WHERE film_id = ? ORDER BY ord");
+        q.bind(1, id);
+        while (q.executeStep()) {
+            f.groups.emplace_back(q.getColumn(0).getString());
         }
     }
     {
@@ -474,6 +563,24 @@ std::vector<Film> Repository::load_all() const {
         }
     }
     {
+        SQLite::Statement q(*db_,
+                            "SELECT film_id, topic FROM topics ORDER BY film_id, ord");
+        while (q.executeStep()) {
+            if (Film* f = film_at(q.getColumn(0).getInt64())) {
+                f->topics.emplace_back(q.getColumn(1).getString());
+            }
+        }
+    }
+    {
+        SQLite::Statement q(
+            *db_, "SELECT film_id, name FROM movie_groups ORDER BY film_id, ord");
+        while (q.executeStep()) {
+            if (Film* f = film_at(q.getColumn(0).getInt64())) {
+                f->groups.emplace_back(q.getColumn(1).getString());
+            }
+        }
+    }
+    {
         SQLite::Statement q(
             *db_,
             "SELECT c.film_id, p.name, c.role, c.character, c.ord FROM credits c "
@@ -535,6 +642,95 @@ std::vector<Film> Repository::load_all() const {
         }
     }
     return films;
+}
+
+std::optional<Id> Repository::find_id_by_source_ref(const std::string& source,
+                                                    const std::string& external_id) const {
+    SQLite::Statement q(
+        *db_, "SELECT film_id FROM source_refs WHERE source = ? AND external_id = ? "
+              "LIMIT 1");
+    q.bind(1, source);
+    q.bind(2, external_id);
+    if (q.executeStep()) {
+        return q.getColumn(0).getInt64();
+    }
+    return std::nullopt;
+}
+
+void Repository::replace_relations(Id film_id, const std::vector<RelationEdge>& edges) {
+    SQLite::Transaction txn(*db_);
+    {
+        SQLite::Statement del(*db_, "DELETE FROM relations WHERE from_id = ?");
+        del.bind(1, film_id);
+        del.exec();
+    }
+    SQLite::Statement ins(
+        *db_, "INSERT OR REPLACE INTO relations(from_id, to_id, kind) VALUES(?, ?, ?)");
+    for (const auto& e : edges) {
+        if (e.other_id == film_id) {
+            continue;
+        }
+        ins.bind(1, film_id);
+        ins.bind(2, e.other_id);
+        ins.bind(3, e.kind);
+        ins.exec();
+        ins.reset();
+    }
+    txn.commit();
+}
+
+void Repository::replace_similarities(Id film_id,
+                                      const std::vector<SimilarityEdge>& edges) {
+    SQLite::Transaction txn(*db_);
+    {
+        SQLite::Statement del(*db_,
+                              "DELETE FROM similarities WHERE a_id = ? OR b_id = ?");
+        del.bind(1, film_id);
+        del.bind(2, film_id);
+        del.exec();
+    }
+    SQLite::Statement ins(
+        *db_,
+        "INSERT OR REPLACE INTO similarities(a_id, b_id, percent) VALUES(?, ?, ?)");
+    for (const auto& e : edges) {
+        if (e.other_id == film_id) {
+            continue;
+        }
+        const Id a = std::min(film_id, e.other_id);
+        const Id b = std::max(film_id, e.other_id);
+        ins.bind(1, a);
+        ins.bind(2, b);
+        ins.bind(3, e.percent);
+        ins.exec();
+        ins.reset();
+    }
+    txn.commit();
+}
+
+std::vector<Repository::RelationEdge> Repository::relations_of(Id film_id) const {
+    std::vector<RelationEdge> out;
+    SQLite::Statement q(
+        *db_, "SELECT to_id, kind FROM relations WHERE from_id = ? ORDER BY to_id");
+    q.bind(1, film_id);
+    while (q.executeStep()) {
+        out.push_back(RelationEdge{q.getColumn(0).getInt64(), q.getColumn(1).getString()});
+    }
+    return out;
+}
+
+std::vector<Repository::SimilarityEdge> Repository::similarities_of(Id film_id) const {
+    std::vector<SimilarityEdge> out;
+    SQLite::Statement q(
+        *db_,
+        "SELECT CASE WHEN a_id = ? THEN b_id ELSE a_id END AS other, percent "
+        "FROM similarities WHERE a_id = ? OR b_id = ? ORDER BY percent DESC");
+    q.bind(1, film_id);
+    q.bind(2, film_id);
+    q.bind(3, film_id);
+    while (q.executeStep()) {
+        out.push_back(SimilarityEdge{q.getColumn(0).getInt64(), q.getColumn(1).getInt()});
+    }
+    return out;
 }
 
 }  // namespace pfdb::db

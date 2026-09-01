@@ -22,7 +22,7 @@ public:
     std::string display_name() const override { return "IMDb"; }
 
     std::vector<SearchResult> search(std::string_view query) override;
-    Film fetch(std::string_view external_id) override;
+    SourceFetch fetch(std::string_view external_id) override;
 
 private:
     net::IHttpClient& http_;

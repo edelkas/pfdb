@@ -90,7 +90,7 @@ std::vector<SearchResult> ImdbSource::search(std::string_view query) {
     return parse_suggestions(resp.body);
 }
 
-Film ImdbSource::fetch(std::string_view external_id) {
+SourceFetch ImdbSource::fetch(std::string_view external_id) {
     if (!is_valid_title_id(external_id)) {
         throw SourceError(SourceError::Kind::NotFound,
                           "imdb: '" + std::string(external_id) +
@@ -111,7 +111,8 @@ Film ImdbSource::fetch(std::string_view external_id) {
             ref.fetched_at = now_unix();
         }
     }
-    return film;
+    // IMDb exposes no relation/similarity edges here.
+    return SourceFetch{std::move(film), {}, {}};
 }
 
 }  // namespace pfdb::sources::imdb

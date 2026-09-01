@@ -61,6 +61,35 @@ public:
     /// Number of films stored.
     std::int64_t count() const;
 
+    /// Find the internal id of the film carrying the given external source id
+    /// (e.g. source="filmaffinity", external_id="358476"), or nullopt.
+    std::optional<Id> find_id_by_source_ref(const std::string& source,
+                                            const std::string& external_id) const;
+
+    /// A relation edge from a film to another film in the collection.
+    struct RelationEdge {
+        Id other_id = kInvalidId;
+        std::string kind;
+    };
+    /// A similarity edge with the source's percentage.
+    struct SimilarityEdge {
+        Id other_id = kInvalidId;
+        int percent = 0;
+    };
+
+    /// Replace all relation edges *originating from* `film_id` with `edges`
+    /// (directed: `film_id` -> other, labelled `kind`).
+    void replace_relations(Id film_id, const std::vector<RelationEdge>& edges);
+
+    /// Replace all similarity edges touching `film_id` with `edges` (undirected).
+    void replace_similarities(Id film_id, const std::vector<SimilarityEdge>& edges);
+
+    /// Relations where `film_id` is the source (directed out-edges).
+    std::vector<RelationEdge> relations_of(Id film_id) const;
+
+    /// Similarities touching `film_id` (either endpoint).
+    std::vector<SimilarityEdge> similarities_of(Id film_id) const;
+
 private:
     std::unique_ptr<SQLite::Database> db_;
 

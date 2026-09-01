@@ -25,6 +25,11 @@ nlohmann::json to_json(const Film& film) {
     j["runtime_minutes"] = opt(film.runtime_minutes);
     j["synopsis"] = film.synopsis;
     j["genres"] = film.genres;
+    j["spanish_title"] = film.spanish_title;
+    j["spanish_synopsis"] = film.spanish_synopsis;
+    j["review_count"] = opt(film.review_count);
+    j["topics"] = film.topics;
+    j["groups"] = film.groups;
 
     j["credits"] = nlohmann::json::array();
     for (const auto& c : film.credits) {

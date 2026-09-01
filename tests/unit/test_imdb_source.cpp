@@ -44,7 +44,7 @@ TEST_CASE("ImdbSource.fetch parses and stamps fetched_at", "[imdb][source]") {
             test::read_fixture("imdb/title_tt0083658.graphql.json"));
 
     ImdbSource src(http);
-    const Film f = src.fetch("tt0083658");
+    const Film f = src.fetch("tt0083658").film;
 
     REQUIRE(f.title == "Blade Runner");
     REQUIRE(f.source_refs.size() == 1);

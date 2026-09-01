@@ -39,8 +39,16 @@ struct AddArgs {
 
     // Online-fetch path. When an external id is given the film is fetched from a
     // source and the manual fields above are layered on top of the result.
+    // Both may be given together to combine sources (IMDb wins shared fields).
     std::optional<std::string> imdb_id;  // --imdb <ttID>
+    std::optional<std::string> fa_id;    // --fa <faId>
     bool dry_run = false;                // fetch/build but do not save
+};
+
+/// Fields accepted by `pfdb update`.
+struct UpdateArgs {
+    Id id = kInvalidId;   // film to update (ignored if `all`)
+    bool all = false;     // update every film in the collection
 };
 
 /// Fields accepted by `pfdb search`.
@@ -54,5 +62,6 @@ int cmd_add(const GlobalOptions& opts, const AddArgs& args);
 int cmd_list(const GlobalOptions& opts);
 int cmd_remove(const GlobalOptions& opts, Id id);
 int cmd_search(const GlobalOptions& opts, const SearchArgs& args);
+int cmd_update(const GlobalOptions& opts, const UpdateArgs& args);
 
 }  // namespace pfdb::cli
