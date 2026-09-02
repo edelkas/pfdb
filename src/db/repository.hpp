@@ -90,6 +90,22 @@ public:
     /// Similarities touching `film_id` (either endpoint).
     std::vector<SimilarityEdge> similarities_of(Id film_id) const;
 
+    /// A stored relation edge (directed from_id -> to_id).
+    struct RelationPair {
+        Id from_id = kInvalidId;
+        Id to_id = kInvalidId;
+    };
+    /// A stored similarity edge (undirected, a_id < b_id).
+    struct SimilarityPair {
+        Id a_id = kInvalidId;
+        Id b_id = kInvalidId;
+    };
+
+    /// All relation edges in the database, for bulk-loading the in-memory model.
+    std::vector<RelationPair> load_relation_pairs() const;
+    /// All similarity edges in the database.
+    std::vector<SimilarityPair> load_similarity_pairs() const;
+
 private:
     std::unique_ptr<SQLite::Database> db_;
 

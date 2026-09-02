@@ -67,6 +67,12 @@ TEST_CASE("insert then find round-trips all fields", "[db]") {
     expected.id = loaded->id;
     expected.created_at = loaded->created_at;
     expected.updated_at = loaded->updated_at;
+    // People are assigned ids on insert, mirrored back on load (like the film id).
+    REQUIRE(expected.credits.size() == loaded->credits.size());
+    for (std::size_t i = 0; i < expected.credits.size(); ++i) {
+        REQUIRE(loaded->credits[i].person.id > 0);
+        expected.credits[i].person.id = loaded->credits[i].person.id;
+    }
     REQUIRE(*loaded == expected);
 
     REQUIRE(loaded->created_at.has_value());

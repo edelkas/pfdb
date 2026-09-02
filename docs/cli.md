@@ -105,13 +105,28 @@ pfdb update --all      # refresh the whole collection
 
 ### `pfdb list`
 
-List films in the collection. Plain output is one film per line
-(`id  title (year)`); the film count is printed to stderr so it doesn't pollute
-piped stdout. With `--json`, prints a JSON array of full film objects.
+List films in the collection, optionally filtered and sorted. Plain output is
+one film per line (`id  title (year)`); the film count is printed to stderr so
+it doesn't pollute piped stdout. With `--json`, prints a JSON array of full film
+objects; with `--csv`, RFC-4180 CSV.
+
+| Option | Description |
+|---|---|
+| `--filter`, `-f` | A filter `FIELD OP VALUE` (repeatable); referenced as `F1`, `F2`, … in `--where`. |
+| `--where`, `-w` | Boolean expression combining the filters, e.g. `F1 AND (F2 OR F3)`. Omitted ⇒ all filters ANDed. |
+| `--sort`, `-s` | Sort spec `field[:asc\|desc],…`, e.g. `year:desc,title`. |
+| `--csv` | Emit CSV to stdout (mutually exclusive with `--json`). |
 
 ```sh
 pfdb list --db mycollection.db --json | jq '.[] | .title'
+
+# Filter + combine + sort:
+pfdb list -f 'genre has Noir' -f 'year = 1940..1949' -w 'F1 AND F2' -s 'imdb_rating:desc'
 ```
+
+The full filter/expression/sort grammar — every field, operator, the boolean
+precedence and aliases, and how cast/crew name lookups work — is documented in
+[querying.md](querying.md).
 
 ### `pfdb remove`
 

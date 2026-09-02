@@ -57,9 +57,18 @@ struct SearchArgs {
     std::string source = "imdb";
 };
 
+/// Fields accepted by `pfdb list`. All are optional; with none given, `list`
+/// prints the whole collection in load order, as before.
+struct ListArgs {
+    std::vector<std::string> filters;  // --filter/-f (repeatable): F1, F2, ...
+    std::string where;                 // --where/-w: boolean expression
+    std::string sort;                  // --sort/-s: field[:dir],...
+    bool csv = false;                  // --csv: RFC-4180 output
+};
+
 int cmd_init(const GlobalOptions& opts);
 int cmd_add(const GlobalOptions& opts, const AddArgs& args);
-int cmd_list(const GlobalOptions& opts);
+int cmd_list(const GlobalOptions& opts, const ListArgs& args);
 int cmd_remove(const GlobalOptions& opts, Id id);
 int cmd_search(const GlobalOptions& opts, const SearchArgs& args);
 int cmd_update(const GlobalOptions& opts, const UpdateArgs& args);

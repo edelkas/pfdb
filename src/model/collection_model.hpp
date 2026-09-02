@@ -29,10 +29,16 @@ class CollectionModel {
 public:
     using Predicate = std::function<bool(const Film&)>;
 
+    /// Adjacency of film id -> connected film ids, used by the query engine's
+    /// `related_to` / `similar_to` inclusion fields.
+    using EdgeIndex = std::unordered_map<Id, std::vector<Id>>;
+
     CollectionModel() = default;
     explicit CollectionModel(std::vector<Film> films);
+    CollectionModel(std::vector<Film> films, EdgeIndex related, EdgeIndex similar);
 
-    /// Build a model by loading every film from the repository.
+    /// Build a model by loading every film -- and its relation/similarity edges
+    /// -- from the repository.
     static CollectionModel load(const db::Repository& repo);
 
     /// All films, in load order (by id).
@@ -54,9 +60,16 @@ public:
     /// Remove the film with `id`. Returns whether one was removed.
     bool erase(Id id);
 
+    /// Film-to-film relation adjacency (undirected view of the relation edges).
+    const EdgeIndex& related_index() const noexcept { return related_; }
+    /// Film-to-film similarity adjacency.
+    const EdgeIndex& similar_index() const noexcept { return similar_; }
+
 private:
     std::vector<Film> films_;
     std::unordered_map<Id, std::size_t> index_;  // id -> position in films_
+    EdgeIndex related_;
+    EdgeIndex similar_;
 
     void rebuild_index();
 };

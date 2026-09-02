@@ -10,8 +10,27 @@ CollectionModel::CollectionModel(std::vector<Film> films) : films_(std::move(fil
     rebuild_index();
 }
 
+CollectionModel::CollectionModel(std::vector<Film> films, EdgeIndex related,
+                                 EdgeIndex similar)
+    : films_(std::move(films)),
+      related_(std::move(related)),
+      similar_(std::move(similar)) {
+    rebuild_index();
+}
+
 CollectionModel CollectionModel::load(const db::Repository& repo) {
-    return CollectionModel(repo.load_all());
+    EdgeIndex related;
+    for (const auto& r : repo.load_relation_pairs()) {
+        // Relations are directed in storage but queried as an undirected link.
+        related[r.from_id].push_back(r.to_id);
+        related[r.to_id].push_back(r.from_id);
+    }
+    EdgeIndex similar;
+    for (const auto& s : repo.load_similarity_pairs()) {
+        similar[s.a_id].push_back(s.b_id);
+        similar[s.b_id].push_back(s.a_id);
+    }
+    return CollectionModel(repo.load_all(), std::move(related), std::move(similar));
 }
 
 void CollectionModel::rebuild_index() {

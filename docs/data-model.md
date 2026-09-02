@@ -13,6 +13,8 @@ All domain types live in `include/pfdb/` and are plain values with `==`.
   tables rather than on `Film`.
 - **`Person`** / **`Credit`** — a person and their contribution to a film
   (`CreditRole` = Director, Writer, Actor, …), with character and billing order.
+  A loaded `Credit` carries its person's stored id, which is what the query
+  engine's cast/crew inclusion filters match on (see [querying.md](querying.md)).
 - **`Rating`** — a score from one source, stored verbatim (`value` on `scale`)
   plus optional `votes`. No lossy normalization at rest.
 - **`SourceRef`** — the film's identity on an external source (`source` +

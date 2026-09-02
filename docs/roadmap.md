@@ -14,7 +14,7 @@ begins. Later milestones are re-planned in detail as they're reached.
   parser tests and a mock HTTP client. `pfdb search` and `pfdb add --imdb <id>`.
   See [sources/imdb.md](sources/imdb.md).
 
-- **M3 — FilmAffinity + multi-source merge** *(current)*
+- **M3 — FilmAffinity + multi-source merge** *(done)*
   FilmAffinity source (HTML scraping via lexbor) for Spanish-specific data:
   spanish title/synopsis, FA rating, review count, topics, groups, and
   film-to-film relations & similarities. Two-source merge (IMDb wins shared
@@ -22,9 +22,12 @@ begins. Later milestones are re-planned in detail as they're reached.
   update` command that refreshes volatile data without touching user fields.
   See [sources/filmaffinity.md](sources/filmaffinity.md).
 
-- **M4 — Power query engine**
-  Complex filters, regex matching, multi-key sort, column selection, saved views.
-  CSV export.
+- **M4 — Power query engine** *(current)*
+  Composable filters (textual/regex, numeric & date ranges, list inclusion)
+  combined by a full boolean expression (NOT/AND/OR + parens, plus XOR/NAND/… and
+  `!`/`&&`/`||` aliases), name→id resolution for cast/crew inclusion, and
+  multi-key sort — all evaluated against the in-memory collection. CSV export.
+  See [querying.md](querying.md).
 
 - **M5 — Import/export**
   Import from emdb; XLS export.

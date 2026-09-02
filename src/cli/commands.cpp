@@ -9,10 +9,13 @@
 
 #include "app/enrichment.hpp"
 #include "db/repository.hpp"
+#include "io/csv.hpp"
 #include "io/film_json.hpp"
 #include "model/collection_model.hpp"
 #include "net/http_client.hpp"
 #include "pfdb/film.hpp"
+#include "query/engine.hpp"
+#include "query/parser.hpp"
 #include "sources/source.hpp"
 #include "sources/source_registry.hpp"
 
@@ -232,42 +235,69 @@ int cmd_add(const GlobalOptions& opts, const AddArgs& args) {
     }
 }
 
-int cmd_list(const GlobalOptions& opts) {
+namespace {
+
+/// A film as a JSON object, with its collection-resolved relation/similarity
+/// edges attached (the same shape M3 emitted for the whole collection).
+nlohmann::json film_json_with_edges(const db::Repository& repo,
+                                    const CollectionModel& model, const Film& f) {
+    nlohmann::json obj = to_json(f);
+    nlohmann::json relations = nlohmann::json::array();
+    for (const auto& e : repo.relations_of(f.id)) {
+        const Film* other = model.find(e.other_id);
+        relations.push_back({{"id", e.other_id},
+                             {"title", other != nullptr ? other->title : ""},
+                             {"kind", e.kind}});
+    }
+    obj["relations"] = std::move(relations);
+    nlohmann::json similars = nlohmann::json::array();
+    for (const auto& e : repo.similarities_of(f.id)) {
+        const Film* other = model.find(e.other_id);
+        similars.push_back({{"id", e.other_id},
+                            {"title", other != nullptr ? other->title : ""},
+                            {"percent", e.percent}});
+    }
+    obj["similarities"] = std::move(similars);
+    return obj;
+}
+
+}  // namespace
+
+int cmd_list(const GlobalOptions& opts, const ListArgs& args) {
+    if (opts.json && args.csv) {
+        std::cerr << "error: choose either --json or --csv, not both\n";
+        return kUsageError;
+    }
     auto repo = open_repo(opts);
     if (!repo) {
         return kRuntimeError;
     }
     const CollectionModel model = CollectionModel::load(*repo);
 
-    if (opts.json) {
+    // Parse, normalize, and run the query (filters + boolean expr + sort). With
+    // no options this returns every film in load order.
+    std::vector<const Film*> results;
+    try {
+        results = query::run_query(
+            model, query::QueryRequest{args.filters, args.where, args.sort});
+    } catch (const query::QueryError& e) {
+        std::cerr << "error: " << e.what() << '\n';
+        return kUsageError;
+    }
+
+    if (args.csv) {
+        write_csv(std::cout, results);
+    } else if (opts.json) {
         nlohmann::json arr = nlohmann::json::array();
-        for (const auto& f : model.all()) {
-            nlohmann::json obj = to_json(f);
-            // Attach the film-to-film edges (resolved against the collection).
-            nlohmann::json relations = nlohmann::json::array();
-            for (const auto& e : repo->relations_of(f.id)) {
-                const Film* other = model.find(e.other_id);
-                relations.push_back({{"id", e.other_id},
-                                     {"title", other != nullptr ? other->title : ""},
-                                     {"kind", e.kind}});
-            }
-            obj["relations"] = std::move(relations);
-            nlohmann::json similars = nlohmann::json::array();
-            for (const auto& e : repo->similarities_of(f.id)) {
-                const Film* other = model.find(e.other_id);
-                similars.push_back({{"id", e.other_id},
-                                    {"title", other != nullptr ? other->title : ""},
-                                    {"percent", e.percent}});
-            }
-            obj["similarities"] = std::move(similars);
-            arr.push_back(std::move(obj));
+        for (const Film* f : results) {
+            arr.push_back(film_json_with_edges(*repo, model, *f));
         }
         std::cout << arr.dump(2) << '\n';
     } else {
-        for (const auto& f : model.all()) {
-            print_film_row(std::cout, f);
+        for (const Film* f : results) {
+            print_film_row(std::cout, *f);
         }
-        std::cerr << model.size() << " film(s).\n";
+        std::cerr << results.size() << " film(s).\n";
     }
     return kOk;
 }

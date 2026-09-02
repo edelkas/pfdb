@@ -473,15 +473,16 @@ std::optional<Film> Repository::find(Id id) const {
     {
         SQLite::Statement q(
             *db_,
-            "SELECT p.name, c.role, c.character, c.ord FROM credits c "
+            "SELECT p.id, p.name, c.role, c.character, c.ord FROM credits c "
             "JOIN people p ON p.id = c.person_id WHERE c.film_id = ? ORDER BY c.ord");
         q.bind(1, id);
         while (q.executeStep()) {
             Credit c;
-            c.person.name = q.getColumn(0).getString();
-            c.role = credit_role_from_string(q.getColumn(1).getString());
-            c.character = q.getColumn(2).getString();
-            c.order = q.getColumn(3).getInt();
+            c.person.id = q.getColumn(0).getInt64();
+            c.person.name = q.getColumn(1).getString();
+            c.role = credit_role_from_string(q.getColumn(2).getString());
+            c.character = q.getColumn(3).getString();
+            c.order = q.getColumn(4).getInt();
             f.credits.push_back(std::move(c));
         }
     }
@@ -583,15 +584,16 @@ std::vector<Film> Repository::load_all() const {
     {
         SQLite::Statement q(
             *db_,
-            "SELECT c.film_id, p.name, c.role, c.character, c.ord FROM credits c "
+            "SELECT c.film_id, p.id, p.name, c.role, c.character, c.ord FROM credits c "
             "JOIN people p ON p.id = c.person_id ORDER BY c.film_id, c.ord");
         while (q.executeStep()) {
             if (Film* f = film_at(q.getColumn(0).getInt64())) {
                 Credit c;
-                c.person.name = q.getColumn(1).getString();
-                c.role = credit_role_from_string(q.getColumn(2).getString());
-                c.character = q.getColumn(3).getString();
-                c.order = q.getColumn(4).getInt();
+                c.person.id = q.getColumn(1).getInt64();
+                c.person.name = q.getColumn(2).getString();
+                c.role = credit_role_from_string(q.getColumn(3).getString());
+                c.character = q.getColumn(4).getString();
+                c.order = q.getColumn(5).getInt();
                 f->credits.push_back(std::move(c));
             }
         }
@@ -729,6 +731,24 @@ std::vector<Repository::SimilarityEdge> Repository::similarities_of(Id film_id) 
     q.bind(3, film_id);
     while (q.executeStep()) {
         out.push_back(SimilarityEdge{q.getColumn(0).getInt64(), q.getColumn(1).getInt()});
+    }
+    return out;
+}
+
+std::vector<Repository::RelationPair> Repository::load_relation_pairs() const {
+    std::vector<RelationPair> out;
+    SQLite::Statement q(*db_, "SELECT from_id, to_id FROM relations");
+    while (q.executeStep()) {
+        out.push_back(RelationPair{q.getColumn(0).getInt64(), q.getColumn(1).getInt64()});
+    }
+    return out;
+}
+
+std::vector<Repository::SimilarityPair> Repository::load_similarity_pairs() const {
+    std::vector<SimilarityPair> out;
+    SQLite::Statement q(*db_, "SELECT a_id, b_id FROM similarities");
+    while (q.executeStep()) {
+        out.push_back(SimilarityPair{q.getColumn(0).getInt64(), q.getColumn(1).getInt64()});
     }
     return out;
 }

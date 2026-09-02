@@ -6,6 +6,14 @@ add_library(pfdb_core STATIC
     db/repository.cpp
     model/collection_model.cpp
     io/film_json.cpp
+    io/csv.cpp
+    query/field.cpp
+    query/filter.cpp
+    query/expr.cpp
+    query/parser.cpp
+    query/normalize.cpp
+    query/sort.cpp
+    query/engine.cpp
     net/http_client.cpp
     parse/html.cpp
     sources/imdb/imdb_parser.cpp

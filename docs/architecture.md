@@ -32,12 +32,13 @@ never depends on any specific website.
 | `include/pfdb/` | `pfdb` | Public domain value types (`Film`, `Person`, …). |
 | `src/domain/` | `pfdb` | Small bits of domain logic (e.g. credit-role tokens). |
 | `src/db/` | `pfdb::db` | `Repository`: the only component that speaks SQL. |
-| `src/model/` | `pfdb` | `CollectionModel`: the in-memory, indexed collection. |
+| `src/model/` | `pfdb` | `CollectionModel`: the in-memory, indexed collection, plus its relation/similarity edge adjacency. |
+| `src/query/` | `pfdb::query` | The query engine: field registry, filters, the boolean-expression AST, the parsers, name→id normalization, sort, and the `run_query` entry point. |
 | `src/net/` | `pfdb::net` | `IHttpClient` + cpr-backed implementation (the fetch seam). |
 | `src/parse/` | `pfdb::parse` | `HtmlDocument`: a lexbor-backed HTML/CSS-selector wrapper for HTML sources. |
 | `src/sources/` | `pfdb::sources` | `ISource` plugin interface, registry, and the IMDb (JSON) + FilmAffinity (HTML) sources — each a fetcher plus pure parsers. |
 | `src/app/` | `pfdb::app` | Enrichment: two-source merge (IMDb wins shared fields) and layering user data onto fetched films. |
-| `src/io/` | `pfdb` | Serialization (JSON now; CSV/XLS later). |
+| `src/io/` | `pfdb` | Serialization: JSON and CSV export (XLS later). |
 | `src/cli/` | `pfdb::cli` | CLI11 front-end. |
 
 ## Key decisions
@@ -64,6 +65,25 @@ CLI (parse args) → AddArgs → Film → Repository::insert
                                         └─ returns new id
 CLI reads it back (Repository::find) → to_json → stdout
 ```
+
+## Data flow: `pfdb list` (querying)
+
+```
+CLI (--filter/--where/--sort) → query::QueryRequest
+  → run_query(model, req):
+      parse each --filter   → query::Filter        (parser.cpp)
+      parse --where         → boolean Expr tree     (parser.cpp; extended ops reduced)
+      normalize             → cast/crew names → id filters, using the model's
+                              people index          (normalize.cpp)
+      evaluate over model.all() (short-circuit AND/OR)   (expr.cpp / filter.cpp)
+      sort                  → stable multi-key comparator (sort.cpp)
+  → vector<const Film*> → JSON / CSV / rows
+```
+
+The query engine is pure and source-agnostic: it reads `Film` values and two
+edge-adjacency maps (`related_to`/`similar_to`) held by the `CollectionModel`,
+and never touches SQL or the network. Fields are defined in one registry
+(`field.cpp`), so new queryable/sortable fields are a one-line addition.
 
 ## Planned services
 

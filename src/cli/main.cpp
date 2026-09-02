@@ -69,7 +69,15 @@ int main(int argc, char** argv) {
     update->add_flag("--all", update_args.all, "Update every film in the collection");
 
     // --- list ---
-    auto* list = app.add_subcommand("list", "List films in the collection");
+    ListArgs list_args;
+    auto* list = app.add_subcommand("list", "List films, with optional filters/sort");
+    list->add_option("--filter,-f", list_args.filters,
+                     "A filter 'FIELD OP VALUE' (repeatable); referenced as F1, F2, ...");
+    list->add_option("--where,-w", list_args.where,
+                     "Boolean expression over the filters, e.g. 'F1 AND (F2 OR F3)'");
+    list->add_option("--sort,-s", list_args.sort,
+                     "Sort spec 'field[:asc|desc],...', e.g. 'year:desc,title'");
+    list->add_flag("--csv", list_args.csv, "Emit CSV to stdout (excludes --json)");
 
     // --- remove ---
     pfdb::Id remove_id = pfdb::kInvalidId;
@@ -96,7 +104,7 @@ int main(int argc, char** argv) {
         return cmd_update(gopts, update_args);
     }
     if (list->parsed()) {
-        return cmd_list(gopts);
+        return cmd_list(gopts, list_args);
     }
     if (remove->parsed()) {
         return cmd_remove(gopts, remove_id);

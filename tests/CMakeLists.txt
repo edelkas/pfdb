@@ -13,6 +13,13 @@ add_executable(pfdb_tests
     unit/test_fa_source.cpp
     unit/test_fa_live.cpp
     unit/test_merge.cpp
+    unit/test_query_parser.cpp
+    unit/test_query_expr.cpp
+    unit/test_filter_eval.cpp
+    unit/test_normalize.cpp
+    unit/test_sort.cpp
+    unit/test_csv.cpp
+    unit/test_query_engine.cpp
 )
 
 # Tests reach into the internal headers under src/ (Repository, CollectionModel,
