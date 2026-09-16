@@ -8,46 +8,41 @@ It contains movie metadata extracted from sources like [IMDb](https://www.imdb.c
 
 - [Table of contents](#table-of-contents)
 - [General aspects](#general-aspects)
-- [Sections](#sections)
-   * [Version](#version)
-   * [Movies](#movies)
-      + [Title group](#title-group)
-      + [Year group](#year-group)
-      + [Genres group](#genres-group)
-      + [Audio group](#audio-group)
-      + [Cast group](#cast-group)
-      + [Plot group](#plot-group)
-      + [Comments group](#comments-group)
-      + [Loaned group](#loaned-group)
-      + [Rating group](#rating-group)
-      + [Custom fields group](#custom-fields-group)
-      + [Tagline group](#tagline-group)
-   * [Actors](#actors)
-   * [Directors](#directors)
-   * [Writers](#writers)
-   * [Composers](#composers)
-   * [Tags](#tags)
-   * [Collections](#collections)
+- [Version section](#version-section)
+- [Movies section](#movies-section)
+   * [Title group](#title-group)
+   * [Year group](#year-group)
+   * [Genres group](#genres-group)
+   * [Audio group](#audio-group)
+   * [Cast group](#cast-group)
+   * [Plot group](#plot-group)
+   * [Comments group](#comments-group)
+   * [Loaned group](#loaned-group)
+   * [Rating group](#rating-group)
+   * [Custom fields group](#custom-fields-group)
+   * [Tagline group](#tagline-group)
+- [Actors section](#actors-section)
+- [Directors section](#directors-section)
+- [Writers section](#writers-section)
+- [Composers section](#composers-section)
+- [Tags section](#tags-section)
+- [Collections section](#collections-section)
 
 ## General aspects
 
-The file is versioned independently of EMDB itself, and the current version is v80. Most details in this documentation refer to this version, although most apply for significantly older versions too.
+The file is versioned independently of EMDB itself, and the current version as of September 2026 is v80. All details in this documentation refer to this version, although many apply for significantly older ones too, and some of the changes will be indicated.
 
-The file's encoding has been UTF-16 LE w/ BOM since as far back as my records go (v49, 2016), and it's used a JSON format since at least v58 (2019). Older versions used an INI-style format instead.
+The file's encoding has been UTF-16 LE w/ BOM since as far back as my records go (v44, 2014), and it's used a JSON format since at least v58 (2019). The previous versions used an INI-style format instead.
 
 The file is divided into sections. In the current JSON format, each section is a top-level key. In the old INI-style format, each section was introduced by a line with the name in brackets, as usual, and the end of the file was marked by a `[TheEnd]` section.
 
 In the JSON format, all numerical values appear as strings, and thus need to be casted during parsing.
 
-## Sections
-
-We will describe the most important sections of the file.
-
-### Version
+## Version section
 
 This metadata section only indicates the `emdb.dat` file version, so EMDB knows how to parse it. In the old INI format it had no content, the version was embedded in the section name, e.g. `[V51]`. In the new JSON format, it's keyed by `version` and its value is an integer (as a string, as mentioned).
 
-### Movies
+## Movies section
 
 This section contains most of the films' metadata and userdata. In the current JSON format, it's an array where each entry is a movie object. In the old INI-style format, movies were delimited by the Group Separator character - ASCII `0x1D` - since v52 (2017), and before that, they were a fixed amount of lines each.
 
@@ -71,7 +66,7 @@ The available field groups, in order, are the following:
 
 Note the names listed here are the key names in the JSON format, they weren't named in the INI format. The name usually refer to the first field in the group, but each group actually contains a wide range of different fields. Unknown fields are denoted with a `?`.
 
-#### Title group
+### Title group
 
 First line in the INI format, keyed `title` in the JSON format. The pre-v52 field separator of this group was `|`. It currently has 4 fields, but was known to have at least one more previously:
 
@@ -81,7 +76,7 @@ First line in the INI format, keyed `title` in the JSON format. The pre-v52 fiel
 - Unknown (removed at some point circa v70 / 2022).
 - Collection ID in TMDb (-1 if none)
 
-#### Year group
+### Year group
 
 Second line in the INI format, keyed `year` in the JSON format. The pre-v52 field separator of this group was `;`. It currently has 17 fields:
 
@@ -89,11 +84,16 @@ Second line in the INI format, keyed `year` in the JSON format. The pre-v52 fiel
 - Comma-separated list of director indexes (see the [Directors](#directors) section)
 - Length in minutes
 - Country name or code (e.g. "USA" or "#US")
+- Integer, each digit in base 10 contains an enum, from low to high:
+  * ?
+  * ?
+  * ?
+  * ?
+  * Bit depth (0 = Unknown, 1 = 8 bits, 2 = 10 bits, 3 = 12 bits)
 - ?
-- ?
-- Resolution information, as a string or an enum, see details below
+- [Resolution](#resolution) information, as a string or an enum
 - Path to video file (empty if none)
-- Film edition / version as an integer, see specification below
+- Film [edition](#editions) / version as an integer
 - An integer with two components: A bitmask with personal information in the first byte, and the watch count afterwards:
   * The 8-bit personal bitmask encodes the following properties, from low to high:
     + ?
@@ -104,14 +104,19 @@ Second line in the INI format, keyed `year` in the JSON format. The pre-v52 fiel
     + The movie is favourited
     + ?
     + ?
-  * Amount of times the film has been watched. To extract it, the field must be right-shifted by 8.
+  * Amount of times the film has been watched. To extract it, the field must be right-shifted by 8 bits.
 - Number of disks (default: 1)
-- Color information (0 = Not specified, 1 = Color, 2 = Black & White, 3 = B&W / Color)
+- Integer, each digit encoding a different thing:
+  * Units: Color information (0 = Not specified, 1 = Color, 2 = Black & White, 3 = B&W / Color)
+  * Tens: ?
+  * Hundreds: Frame rate (0 = Not specified, 1 = 23.976, 2 = 24, 3 = 25, 4 = 29.97, 5 = 30, 6 = 60)
 - ?
 - ?
 - ?
 - Comma-separated list of writer indexes (see the [Writers](#writers) section) (added in v51, 2016)
 - Comma-separated list of composer indexes (see the [Composers](#composers) section) (added in v53, 2017)
+
+#### Resolution
 
 The resolution information may be stored directly as a string if supplied manually, or as an enum if one of the default values is chosen (in which case the value will appear prefixed with `@`). The enum takes the following values:
 
@@ -128,7 +133,9 @@ The resolution information may be stored directly as a string if supplied manual
 | 8 | 3840x2160 (4K UHD) |
 | 9 | 2160p |
 
-The movie versions are encoded as an enum with the following values:
+#### Editions
+
+The movie editions / versions are encoded as an enum with the following values:
 
 | Value | Meaning |
 | --- | --- |
@@ -151,11 +158,11 @@ The movie versions are encoded as an enum with the following values:
 | 15 | IMAX |
 | 16 | Criterion collection |
 
-#### Genres group
+### Genres group
 
 Third line in the INI format, keyed `genres` in the JSON format. The pre-v52 field separator of this group was `;`. It currently has 11 fields:
 
-- Genre list as a string (one-character code each, see codes below)
+- Genre list as a string (one-character code each, see [Genre list](#genre-list))
 - Film ID in IMDb (followed by another number - 0 by default - separated by |)
 - Date the film was added to the db (YYYMMDD)
 - Rating
@@ -167,18 +174,43 @@ Third line in the INI format, keyed `genres` in the JSON format. The pre-v52 fie
 - URL to RottenTomatoes page, path only (empty if none) (added around v60, 2020)
 - Film ID in TVDb (empty if none) (added around v65, 2021)
 
-Genres are abbreviated to the following one-character codes:
+#### Genre list
 
-| Code | Genre |
+Genres are taken from IMDb, and abbreviated with the following one-character codes:
+
+| Genre | Code |
 | --- | --- |
-| A | Action |
-| D | Drama |
-| Y | Mystery |
-| S | Sci-Fi |
-| T | Thriller |
-| \# | TV series |
+| Action | A |
+| Adult | X |
+| Adventure | V |
+| Animation | C |
+| Biography | @ |
+| Comedy | K |
+| Crime | ! |
+| Documentary | U |
+| Drama | D |
+| Family | I |
+| Fantasy | F |
+| Film-noir | f |
+| Game show | g |
+| History | G |
+| Horror | H |
+| Music | M |
+| Musical | m |
+| Mystery | Y |
+| News | N |
+| Reality TV | r |
+| Romance | R |
+| Sci-Fi | S |
+| Short | s |
+| Sport | P |
+| Talk show | t |
+| Thriller | T |
+| War | O |
+| Western | W |
+| TV series | \# |
 
-#### Audio group
+### Audio group
 
 Fourth line in the INI format, keyed `audio` in the JSON format. The pre-v52 field separator of this group was `;`. It currently has 4 fields:
 
@@ -191,7 +223,7 @@ Awards are encoded as a string by concatenating one component per ceremony. Each
 
 Currently, nominations are only included for the Oscars. For example, the film Ben-Hur has the award string `O1101G04B01`, meaning 11 Oscar wins plus one additional nomination, 4 Golden Globe wins and 1 BAFTA award win.
 
-#### Cast group
+### Cast group
 
 Fifth line in the INI format, keyed `cast` in the JSON format. It has only two fields:
 
@@ -200,21 +232,21 @@ Fifth line in the INI format, keyed `cast` in the JSON format. It has only two f
 
 The pre-v52 field separator of this group was `|`, which can cause confusion since character names are also separated by vertical bars. However, since the field count is known (only 2), only the first vertical bar is actually a field separator.
 
-#### Plot group
+### Plot group
 
 Sixth line in the INI format, keyed `plot` in the JSON format. Its only content is the actual synopsis of the movie. Will not appear in the JSON at all if empty.
 
-#### Comments group
+### Comments group
 
 Seventh line in the INI format, keyed `comments` in the JSON format. Its only content is the user's personal comments about the movie (see also [Custom fields group](#custom-fields-group)). Will not appear in the JSON at all if empty.
 
-#### Loaned group
+### Loaned group
 
 Eighth line in the INI format, keyed `loaned` in the JSON format. It contains the user's loan history of this movie, in reverse chronological order. Will not appear in the JSON at all if the movie has never been loaned.
 
 Loans are separated by `|`, and each one is formatted as `loanee_name/date_loaned\date_returned`, where each date follows the format `YYYYMMDD`, and the last part `\date_returned` is optional for the current loan (meaning the movie has not yet been returned).
 
-#### Rating group
+### Rating group
 
 Ninth line in the INI format, keyed `rating` in the JSON format. The pre-v52 field separator of this group was `-`. It currently has 11 fields:
 
@@ -222,26 +254,54 @@ Ninth line in the INI format, keyed `rating` in the JSON format. The pre-v52 fie
 - ? (default: 0)
 - ? (default: 0)
 - ? (default: 0)
-- ? (default: 0)
-- Language list (one character each, see below)
+- Feature bitmask, dumped as a hex number. Each bit meaning, from low to high:
+  * Menu
+  * Extras
+  * ?
+  * 3-D
+  * 3-D Side By Side (SDS) (implies 3-D)
+  * 3-D + 2-D (implies 3-D)
+  * D-Box
+  * 3-D Over/Under (OU) (implies 3-D)
+  * HDR10
+  * HDR10+
+  * Dolby Vision
+  * HLG
+  * Trailers (implies Extras)
+  * Director's commentary (implies Extras)
+  * Alternative endings (implies Extras)
+  * Cut scenes (implies Extras)
+  * Behind the scenes (implies Extras)
+  * HDR10 and Dolby Vision
+  * HDR10+ and Dolby Vision
+- [Language list](#languages) (one character each, see below)
 - ? (empty by default)
 - IMDb vote count
 - File size in MB
-- RottenTomatoes stats, see specification below (added around v60, 2020)
+- [RottenTomatoes stats](#rottentomatoes-stats) (added around v60, 2020)
 - ? (added around v58, 2019)
+
+#### Languages
 
 Languages are stored as 1-character codes concatenated into a string:
 
-| Code | Language |
+| Language | Code |
 | --- | --- |
-| E | English |
-| F | French |
-| G | German |
-| I | Italian |
-| J | Japanese |
-| R | Russian |
-| S | Spanish |
-| & | Silent movie |
+| Arabic | a |
+| Bengali | m |
+| Bulgarian | q |
+| Cantonese | 2 |
+| Catalan | 3 |
+| English | E |
+| French | F |
+| German | G |
+| Italian | I |
+| Japanese | J |
+| Russian | R |
+| Silent movie | & |
+| Spanish | S |
+
+#### RottenTomatoes stats
 
 RottenTomatoes stats are currently encoded as an 8-character string:
 
@@ -263,14 +323,14 @@ They may also appear encoded as a 9-character string, for backwards compatibilit
 | 6 | Verified hot (0 = No, 1 = Yes) |
 | 7-8 | Popcornmeter score |
 
-#### Custom fields group
+### Custom fields group
 
 Tenth line in the INI format, and it's keyed `custom-fields` in the JSON format. The pre-v52 field separator of this group was `|`. It serves the purpose of adding custom user fields (see also [Comments group](#comments-group)). It has 2 potentially empty fields. Will not appear in the JSON at all if both are empty.
 
 - Custom field 1
 - Custom field 2
 
-#### Tagline group
+### Tagline group
 
 Added in v79 (2024), so it doesn't appear in the INI format, and it's keyed `tagline` in the JSON format. It has 3 fields, each empty if not available:
 
@@ -278,7 +338,7 @@ Added in v79 (2024), so it doesn't appear in the INI format, and it's keyed `tag
 - Comma-separated list of tags indexes (see the [Tags](#tags) section)
 - Web link / socials URL
 
-### Actors
+## Actors section
 
 This section stores the list of actors present in the database movies. Their indexes in this list are the ones used in each movie's cast (see [Cast group](#cast-group)), so it's vital to maintain its order in order to recover the mapping.
 
@@ -286,27 +346,27 @@ In the JSON format, it's an array where each entry is an actor, with only 2 keys
 
 In the INI format, actors are separated by new lines, and each line contains the name and the ID separated by `|`.
 
-### Directors
+## Directors section
 
 This section stores the list of directors of the database movies. Again, their indexes in this list are used in each movie's metadata (see [Year group](#year-group)), so it's necessary to maintain it.
 
 In the JSON format, it's an array where each entry is an actor, and it has a single key: the name. In the INI format, it's simply the list of names separated by new lines.
 
-### Writers
+## Writers section
 
 This section stores the list of writers of the database movies. Its formatting is identical to the [Directors](#directors) section, both in the new JSON format and the old INI format. This section was added in v51 (2016).
 
-### Composers
+## Composers section
 
 This section stores the list of soundtrack composers of the database movies. Its formatting is identical to the [Directors](#directors) section, both in the new JSON format and the old INI format. This section was added in v53 (2017). Note however that it was named `SoundtrackWriters` in the old INI format.
 
-### Tags
+## Tags section
 
 This section stores the list of available tags, i.e. topics (e.g. "Buddy Comedy" or "Cyberpunk"). It was probably added around v70 circa 2022, so it's only available in the JSON format.
 
 It's an array where each entry is a tag, and each tag has 3 string fields: the name, the ID (its position in the array), and the color of the badge. The color is encoded as an integer in RGB format (little-endian).
 
-### Collections
+## Collections section
 
 This section stores TMDb movie collections. It was probably added around v70 circa 2022, so it's only available in the JSON format.
 
