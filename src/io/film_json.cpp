@@ -65,6 +65,9 @@ nlohmann::json to_json(const Film& film) {
         {"personal_rating", opt(film.user.personal_rating)},
         {"notes", film.user.notes},
         {"favorite", film.user.favorite},
+        {"watch_count", film.user.watch_count},
+        {"owned", film.user.owned},
+        {"wishlist", film.user.wishlist},
     };
 
     if (film.video.has_value()) {

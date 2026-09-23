@@ -25,6 +25,9 @@ int main(int argc, char** argv) {
         ->envname("PFDB_DATABASE")
         ->capture_default_str();
     app.add_flag("--json", gopts.json, "Emit machine-readable JSON on stdout");
+    app.add_option("--config", gopts.config_path,
+                   "Path to the user config (field presets)")
+        ->envname("PFDB_CONFIG");
 
     // --- init ---
     auto* init = app.add_subcommand("init", "Create or upgrade the database file");
@@ -78,6 +81,36 @@ int main(int argc, char** argv) {
     list->add_option("--sort,-s", list_args.sort,
                      "Sort spec 'field[:asc|desc],...', e.g. 'year:desc,title'");
     list->add_flag("--csv", list_args.csv, "Emit CSV to stdout (excludes --json)");
+    list->add_option("--fields", list_args.fields,
+                     "CSV of field tokens to export (with --csv)");
+    list->add_option("--preset", list_args.preset,
+                     "Named field preset to export (with --csv)");
+
+    // --- import ---
+    ImportArgs import_args;
+    auto* import = app.add_subcommand("import", "Import a collection (e.g. from EMDB)");
+    import->add_option("--emdb", import_args.emdb, "Path to an EMDB emdb.dat file");
+    import->add_option("--preset", import_args.preset,
+                       "Field preset to import (default: all)");
+    import->add_option("--fields", import_args.fields,
+                       "CSV of field tokens to import (overrides --preset)");
+    import->add_flag("--dry-run", import_args.dry_run,
+                     "Parse and report, but do not write to the database");
+
+    // --- preset ---
+    PresetArgs preset_args;
+    auto* preset = app.add_subcommand("preset", "Manage import/export field presets");
+    preset->require_subcommand(1);
+    preset->add_subcommand("list", "List presets");
+    auto* preset_show = preset->add_subcommand("show", "Show a preset's fields");
+    preset_show->add_option("name", preset_args.name, "Preset name")->required();
+    auto* preset_set = preset->add_subcommand("set", "Define or replace a user preset");
+    preset_set->add_option("name", preset_args.name, "Preset name")->required();
+    preset_set->add_option("fields", preset_args.fields,
+                           "CSV of field tokens")
+        ->required();
+    auto* preset_remove = preset->add_subcommand("remove", "Remove a user preset");
+    preset_remove->add_option("name", preset_args.name, "Preset name")->required();
 
     // --- remove ---
     pfdb::Id remove_id = pfdb::kInvalidId;
@@ -85,7 +118,7 @@ int main(int argc, char** argv) {
     remove->add_option("id", remove_id, "Film id to remove")->required();
 
     // Let global options given after the subcommand fall through to the parent.
-    for (auto* sub : std::array{init, add, search, update, list, remove}) {
+    for (auto* sub : std::array{init, add, search, update, list, import, remove}) {
         sub->fallthrough();
     }
 
@@ -105,6 +138,21 @@ int main(int argc, char** argv) {
     }
     if (list->parsed()) {
         return cmd_list(gopts, list_args);
+    }
+    if (import->parsed()) {
+        return cmd_import(gopts, import_args);
+    }
+    if (preset->parsed()) {
+        if (preset_show->parsed()) {
+            preset_args.action = PresetArgs::Action::Show;
+        } else if (preset_set->parsed()) {
+            preset_args.action = PresetArgs::Action::Set;
+        } else if (preset_remove->parsed()) {
+            preset_args.action = PresetArgs::Action::Remove;
+        } else {
+            preset_args.action = PresetArgs::Action::List;
+        }
+        return cmd_preset(gopts, preset_args);
     }
     if (remove->parsed()) {
         return cmd_remove(gopts, remove_id);

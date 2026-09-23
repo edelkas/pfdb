@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "io/csv.hpp"
+#include "io/field_set.hpp"
 #include "pfdb/film.hpp"
 
 using namespace pfdb;
@@ -48,4 +49,26 @@ TEST_CASE("csv quotes fields containing commas and quotes", "[csv]") {
     const std::string out = csv_of({&f});
     // Comma + embedded quotes -> whole field quoted, inner quotes doubled.
     REQUIRE(out.find(R"("Hello, ""World""")") != std::string::npos);
+}
+
+TEST_CASE("csv with a field selection emits just those columns", "[csv]") {
+    Film f;
+    f.id = 7;
+    f.title = "Blade Runner";
+    f.year = 1982;
+    f.user.watch_count = 2;
+    f.user.owned = true;
+
+    io::FieldSet sel;
+    sel.add(io::Field::Title);
+    sel.add(io::Field::Year);
+    sel.add(io::Field::WatchCount);
+    sel.add(io::Field::Owned);
+
+    std::ostringstream os;
+    write_csv(os, std::vector<const Film*>{&f}, sel);
+    const std::string out = os.str();
+
+    REQUIRE(out.rfind("id,title,year,watch-count,owned\r\n", 0) == 0);
+    REQUIRE(out.find("7,Blade Runner,1982,2,true\r\n") != std::string::npos);
 }

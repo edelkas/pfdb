@@ -7,9 +7,12 @@
 
 #include <nlohmann/json.hpp>
 
+#include "app/config.hpp"
 #include "app/enrichment.hpp"
+#include "app/import.hpp"
 #include "db/repository.hpp"
 #include "io/csv.hpp"
+#include "io/field_set.hpp"
 #include "io/film_json.hpp"
 #include "model/collection_model.hpp"
 #include "net/http_client.hpp"
@@ -21,6 +24,13 @@
 
 namespace pfdb::cli {
 namespace {
+
+/// Load the user config (presets), resolving the default path when unset.
+config::Config load_config(const GlobalOptions& opts) {
+    const std::string path =
+        opts.config_path.empty() ? config::Config::default_path() : opts.config_path;
+    return config::Config::load(path);
+}
 
 /// Open the repository, reporting failures uniformly. Returns nullopt on error
 /// (after printing a message), so callers can `return kRuntimeError`.
@@ -286,7 +296,21 @@ int cmd_list(const GlobalOptions& opts, const ListArgs& args) {
     }
 
     if (args.csv) {
-        write_csv(std::cout, results);
+        if (!args.fields.empty() || !args.preset.empty()) {
+            try {
+                const io::FieldSet sel = io::resolve_selection(
+                    args.preset, args.fields, load_config(opts), io::FieldSet::all());
+                write_csv(std::cout, results, sel);
+            } catch (const io::FieldError& e) {
+                std::cerr << "error: " << e.what() << '\n';
+                return kUsageError;
+            } catch (const std::exception& e) {
+                std::cerr << "error: " << e.what() << '\n';
+                return kRuntimeError;
+            }
+        } else {
+            write_csv(std::cout, results);
+        }
     } else if (opts.json) {
         nlohmann::json arr = nlohmann::json::array();
         for (const Film* f : results) {
@@ -448,6 +472,163 @@ int cmd_search(const GlobalOptions& opts, const SearchArgs& args) {
             std::cout << '\n';
         }
         std::cerr << results.size() << " result(s).\n";
+    }
+    return kOk;
+}
+
+namespace {
+
+std::string join_tokens(const std::vector<std::string>& tokens) {
+    std::string out;
+    for (const auto& t : tokens) {
+        if (!out.empty()) {
+            out += ", ";
+        }
+        out += t;
+    }
+    return out;
+}
+
+}  // namespace
+
+int cmd_import(const GlobalOptions& opts, const ImportArgs& args) {
+    if (args.emdb.empty()) {
+        std::cerr << "error: provide a source file, e.g. --emdb <path>\n";
+        return kUsageError;
+    }
+
+    io::FieldSet selection;
+    try {
+        selection = io::resolve_selection(args.preset, args.fields, load_config(opts),
+                                          io::FieldSet::all());
+    } catch (const io::FieldError& e) {
+        std::cerr << "error: " << e.what() << '\n';
+        return kUsageError;
+    } catch (const std::exception& e) {
+        std::cerr << "error: " << e.what() << '\n';
+        return kRuntimeError;
+    }
+
+    auto repo = open_repo(opts);
+    if (!repo) {
+        return kRuntimeError;
+    }
+    try {
+        const app::ImportStats stats =
+            app::import_emdb(*repo, args.emdb, selection, args.dry_run);
+        if (opts.json) {
+            nlohmann::json j{{"total", stats.total},
+                             {"added", stats.added},
+                             {"updated", stats.updated},
+                             {"dry_run", args.dry_run}};
+            std::cout << j.dump(2) << '\n';
+        } else {
+            std::cout << (args.dry_run ? "Would import " : "Imported ") << stats.total
+                      << " film(s): " << stats.added << " added, " << stats.updated
+                      << " updated";
+            if (args.dry_run) {
+                std::cout << " (dry run, nothing written)";
+            }
+            std::cout << ".\n";
+        }
+        return kOk;
+    } catch (const std::exception& e) {
+        std::cerr << "error: import failed: " << e.what() << '\n';
+        return kRuntimeError;
+    }
+}
+
+int cmd_preset(const GlobalOptions& opts, const PresetArgs& args) {
+    config::Config cfg;
+    try {
+        cfg = load_config(opts);
+    } catch (const std::exception& e) {
+        std::cerr << "error: " << e.what() << '\n';
+        return kRuntimeError;
+    }
+
+    switch (args.action) {
+        case PresetArgs::Action::List: {
+            if (opts.json) {
+                nlohmann::json user = nlohmann::json::object();
+                for (const auto& [name, tokens] : cfg.presets()) {
+                    user[name] = tokens;
+                }
+                nlohmann::json j{{"builtin", {"all", "userdata", "metadata"}},
+                                 {"user", std::move(user)}};
+                std::cout << j.dump(2) << '\n';
+            } else {
+                std::cout << "Built-in presets: all, userdata, metadata\n";
+                if (cfg.presets().empty()) {
+                    std::cout << "No user presets.\n";
+                } else {
+                    std::cout << "User presets:\n";
+                    for (const auto& [name, tokens] : cfg.presets()) {
+                        std::cout << "  " << name << ": " << join_tokens(tokens) << '\n';
+                    }
+                }
+            }
+            return kOk;
+        }
+        case PresetArgs::Action::Show: {
+            std::optional<std::vector<std::string>> tokens;
+            if (auto builtin = io::builtin_preset(args.name)) {
+                tokens = builtin->tokens();
+            } else {
+                tokens = cfg.preset(args.name);
+            }
+            if (!tokens) {
+                std::cerr << "error: no preset '" << args.name << "'\n";
+                return kNotFound;
+            }
+            if (opts.json) {
+                std::cout << nlohmann::json(*tokens).dump(2) << '\n';
+            } else {
+                std::cout << args.name << ": " << join_tokens(*tokens) << '\n';
+            }
+            return kOk;
+        }
+        case PresetArgs::Action::Set: {
+            if (io::is_builtin_preset(args.name)) {
+                std::cerr << "error: '" << args.name << "' is a built-in preset\n";
+                return kUsageError;
+            }
+            io::FieldSet sel;
+            try {
+                sel = io::parse_field_list(args.fields);
+            } catch (const io::FieldError& e) {
+                std::cerr << "error: " << e.what() << '\n';
+                return kUsageError;
+            }
+            cfg.set_preset(args.name, sel.tokens());
+            try {
+                cfg.save();
+            } catch (const std::exception& e) {
+                std::cerr << "error: " << e.what() << '\n';
+                return kRuntimeError;
+            }
+            std::cout << "Saved preset '" << args.name << "' (" << join_tokens(sel.tokens())
+                      << ").\n";
+            return kOk;
+        }
+        case PresetArgs::Action::Remove: {
+            if (io::is_builtin_preset(args.name)) {
+                std::cerr << "error: cannot remove built-in preset '" << args.name << "'\n";
+                return kUsageError;
+            }
+            if (!cfg.remove_preset(args.name)) {
+                std::cerr << "error: no preset '" << args.name << "'\n";
+                return kNotFound;
+            }
+            try {
+                cfg.save();
+            } catch (const std::exception& e) {
+                std::cerr << "error: " << e.what() << '\n';
+                return kRuntimeError;
+            }
+            std::cout << "Removed preset '" << args.name << "'.\n";
+            return kOk;
+        }
     }
     return kOk;
 }

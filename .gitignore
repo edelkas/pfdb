@@ -18,6 +18,11 @@
 *.db-shm
 /scratch/
 
+# The real EMDB export used for local [.emdb-big] smoke testing is a personal
+# collection (paths, watch history) and is never committed; the crafted
+# tests/fixtures/emdb/sample.dat is the checked-in fixture.
+/tests/fixtures/emdb.dat
+
 # IDE / editor
 /.vs/
 /.vscode/
@@ -30,3 +35,6 @@
 # OS
 Thumbs.db
 .DS_Store
+
+# Stray crash dumps
+*.stackdump

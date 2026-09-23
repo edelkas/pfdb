@@ -35,6 +35,12 @@ struct UserData {
     std::string notes;
     /// Whether the user flagged this film as a favourite.
     bool favorite = false;
+    /// Number of times the user has watched the film (0 = unwatched).
+    int watch_count = 0;
+    /// Whether the user owns a copy of the film.
+    bool owned = false;
+    /// Whether the film is on the user's wish list.
+    bool wishlist = false;
 
     friend bool operator==(const UserData&, const UserData&) = default;
 };

@@ -7,6 +7,12 @@ add_library(pfdb_core STATIC
     model/collection_model.cpp
     io/film_json.cpp
     io/csv.cpp
+    io/field_set.cpp
+    io/emdb/emdb_decode.cpp
+    io/emdb/emdb_parser.cpp
+    io/emdb/emdb_map.cpp
+    app/config.cpp
+    app/import.cpp
     query/field.cpp
     query/filter.cpp
     query/expr.cpp

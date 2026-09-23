@@ -9,6 +9,8 @@ collection manager aimed at power users.
 - **[Data model & schema](data-model.md)** — the domain types and the SQLite schema.
 - **[CLI reference](cli.md)** — every command and option.
 - **[Querying](querying.md)** — filters, boolean expressions, and sorting for `pfdb list`.
+- **[Importing](importing.md)** — importing a collection from EMDB, with field selection.
+- **[Configuration](configuration.md)** — the user config file and field presets.
 - **[Testing & fixtures](testing.md)** — how tests are organized and how to keep
   scraping parsers honest with saved fixtures.
 - **[Roadmap](roadmap.md)** — milestones from the CLI foundation to the GUI.

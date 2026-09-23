@@ -22,15 +22,20 @@ begins. Later milestones are re-planned in detail as they're reached.
   update` command that refreshes volatile data without touching user fields.
   See [sources/filmaffinity.md](sources/filmaffinity.md).
 
-- **M4 — Power query engine** *(current)*
+- **M4 — Power query engine** *(done)*
   Composable filters (textual/regex, numeric & date ranges, list inclusion)
   combined by a full boolean expression (NOT/AND/OR + parens, plus XOR/NAND/… and
   `!`/`&&`/`||` aliases), name→id resolution for cast/crew inclusion, and
   multi-key sort — all evaluated against the in-memory collection. CSV export.
   See [querying.md](querying.md).
 
-- **M5 — Import/export**
-  Import from emdb; XLS export.
+- **M5 — EMDB import + field presets** *(current)*
+  Import a collection from EMDB (`emdb.dat`), choosing which compatible fields to
+  bring in — individually or via user-configurable presets shared through a JSON
+  config. Field selection also drives CSV export. New user fields (watch count,
+  owned, wish list). Highlighted workflow: import user data, then `update --all`
+  to redownload metadata. See [importing.md](importing.md) and
+  [configuration.md](configuration.md). (XLS export deferred to a later milestone.)
 
 - **M6 — Rich metadata & playback**
   Cover art, financials, reviews; open-in-video-player; local video-file metadata.

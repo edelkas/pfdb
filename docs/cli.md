@@ -12,6 +12,7 @@ pfdb [--db PATH] [--json] <command> [options]
 |---|---|
 | `--db PATH` | Path to the collection database file. Defaults to `pfdb.db`, or the `PFDB_DATABASE` environment variable if set. |
 | `--json` | Emit machine-readable JSON on stdout (for scripting/piping). |
+| `--config PATH` | Path to the user config (field presets). Defaults to `<home>/.pfdb/config.json`, or the `PFDB_CONFIG` environment variable if set. See [configuration.md](configuration.md). |
 | `--version` | Print the version and exit. |
 | `-h`, `--help` | Show help (works on the top level and per subcommand). |
 
@@ -116,6 +117,8 @@ objects; with `--csv`, RFC-4180 CSV.
 | `--where`, `-w` | Boolean expression combining the filters, e.g. `F1 AND (F2 OR F3)`. Omitted ⇒ all filters ANDed. |
 | `--sort`, `-s` | Sort spec `field[:asc\|desc],…`, e.g. `year:desc,title`. |
 | `--csv` | Emit CSV to stdout (mutually exclusive with `--json`). |
+| `--fields` | With `--csv`, the field tokens to export (comma-separated). |
+| `--preset` | With `--csv`, a named field preset to export. See [configuration.md](configuration.md). |
 
 ```sh
 pfdb list --db mycollection.db --json | jq '.[] | .title'
@@ -127,6 +130,41 @@ pfdb list -f 'genre has Noir' -f 'year = 1940..1949' -w 'F1 AND F2' -s 'imdb_rat
 The full filter/expression/sort grammar — every field, operator, the boolean
 precedence and aliases, and how cast/crew name lookups work — is documented in
 [querying.md](querying.md).
+
+### `pfdb import`
+
+Import a collection from an external tool. Films are matched by IMDb id: an
+existing film's selected fields are refreshed; otherwise a new film is inserted.
+
+| Option | Description |
+|---|---|
+| `--emdb <file>` | Path to an EMDB `emdb.dat` export. |
+| `--preset <name>` | Field preset to import. Default `all`. |
+| `--fields <tokens>` | Comma-separated field tokens (overrides `--preset`). |
+| `--dry-run` | Parse and report counts, but write nothing. |
+
+```sh
+# Import just your watch history/ratings/owned status, then redownload metadata:
+pfdb import --emdb emdb.dat --preset userdata
+pfdb update --all
+```
+
+See [importing.md](importing.md) for the EMDB→PFDB field mapping and the
+recommended migration workflow.
+
+### `pfdb preset`
+
+Manage the named field presets used by `import` and `list --csv`.
+
+```sh
+pfdb preset list                                   # built-ins + user presets
+pfdb preset show userdata                           # a preset's fields
+pfdb preset set mine title,year,user-rating,owned   # define or replace
+pfdb preset remove mine
+```
+
+Built-in presets (`all`, `userdata`, `metadata`) are reserved. See
+[configuration.md](configuration.md).
 
 ### `pfdb remove`
 

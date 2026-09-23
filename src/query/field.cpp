@@ -21,6 +21,7 @@ const std::vector<FieldInfo>& registry() {
         {"year", FieldKind::Number},
         {"runtime", FieldKind::Number},
         {"my_rating", FieldKind::Number},
+        {"watch_count", FieldKind::Number},
         {"review_count", FieldKind::Number},
         {"imdb_rating", FieldKind::Number},
         {"fa_rating", FieldKind::Number},
@@ -150,6 +151,7 @@ std::optional<double> extract_number(std::string_view field, const Film& film) {
                    : std::nullopt;
     }
     if (field == "my_rating") return film.user.personal_rating;
+    if (field == "watch_count") return static_cast<double>(film.user.watch_count);
     if (field == "review_count") {
         return film.review_count.has_value() ? std::optional<double>(*film.review_count)
                                              : std::nullopt;

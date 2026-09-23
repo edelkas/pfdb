@@ -119,6 +119,12 @@ constexpr std::array kMigrations = {
         );
         CREATE INDEX idx_similarities_b ON similarities(b_id);
     )sql",
+    // v2 -> v3: extra user-specific fields (from EMDB import and general use).
+    R"sql(
+        ALTER TABLE films ADD COLUMN watch_count INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE films ADD COLUMN owned       INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE films ADD COLUMN wishlist    INTEGER NOT NULL DEFAULT 0;
+    )sql",
 };
 
 UnixSeconds now_unix() {
@@ -337,8 +343,9 @@ Id Repository::insert(const Film& film) {
             *db_,
             "INSERT INTO films(title, original_title, year, runtime_minutes, "
             "synopsis, date_watched, personal_rating, notes, favorite, "
-            "created_at, updated_at, spanish_title, spanish_synopsis, review_count) "
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            "created_at, updated_at, spanish_title, spanish_synopsis, review_count, "
+            "watch_count, owned, wishlist) "
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         stmt.bind(1, film.title);
         stmt.bind(2, film.original_title);
         bind_opt(stmt, 3, film.year);
@@ -353,6 +360,9 @@ Id Repository::insert(const Film& film) {
         stmt.bind(12, film.spanish_title);
         stmt.bind(13, film.spanish_synopsis);
         bind_opt(stmt, 14, film.review_count);
+        stmt.bind(15, film.user.watch_count);
+        stmt.bind(16, film.user.owned ? 1 : 0);
+        stmt.bind(17, film.user.wishlist ? 1 : 0);
         stmt.exec();
     }
     const Id film_id = db_->getLastInsertRowid();
@@ -370,7 +380,8 @@ bool Repository::update(const Film& film) {
             *db_,
             "UPDATE films SET title=?, original_title=?, year=?, runtime_minutes=?, "
             "synopsis=?, date_watched=?, personal_rating=?, notes=?, favorite=?, "
-            "updated_at=?, spanish_title=?, spanish_synopsis=?, review_count=? "
+            "updated_at=?, spanish_title=?, spanish_synopsis=?, review_count=?, "
+            "watch_count=?, owned=?, wishlist=? "
             "WHERE id=?");
         stmt.bind(1, film.title);
         stmt.bind(2, film.original_title);
@@ -385,7 +396,10 @@ bool Repository::update(const Film& film) {
         stmt.bind(11, film.spanish_title);
         stmt.bind(12, film.spanish_synopsis);
         bind_opt(stmt, 13, film.review_count);
-        stmt.bind(14, film.id);
+        stmt.bind(14, film.user.watch_count);
+        stmt.bind(15, film.user.owned ? 1 : 0);
+        stmt.bind(16, film.user.wishlist ? 1 : 0);
+        stmt.bind(17, film.id);
         changed = stmt.exec();
     }
     if (changed == 0) {
@@ -427,13 +441,16 @@ Film read_film_row(SQLite::Statement& stmt) {
     f.spanish_title = stmt.getColumn(12).getString();
     f.spanish_synopsis = stmt.getColumn(13).getString();
     f.review_count = get_opt_int(stmt, 14);
+    f.user.watch_count = stmt.getColumn(15).getInt();
+    f.user.owned = stmt.getColumn(16).getInt() != 0;
+    f.user.wishlist = stmt.getColumn(17).getInt() != 0;
     return f;
 }
 
 constexpr const char* kFilmColumns =
     "id, title, original_title, year, runtime_minutes, synopsis, date_watched, "
     "personal_rating, notes, favorite, created_at, updated_at, "
-    "spanish_title, spanish_synopsis, review_count";
+    "spanish_title, spanish_synopsis, review_count, watch_count, owned, wishlist";
 
 }  // namespace
 

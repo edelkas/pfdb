@@ -21,7 +21,7 @@ All domain types live in `include/pfdb/` and are plain values with `==`.
   `external_id`, e.g. `imdb`/`tt0083658`), plus when it was last fetched. A film
   may carry several — this is what lets PFDB combine sources.
 - **`UserData`** — the user's own data: date watched, personal rating, notes,
-  favourite flag.
+  favourite flag, watch count, and owned / wish-list flags.
 - **`VideoFileInfo`** — metadata about a local video file, all optional.
 
 ### Conventions
@@ -42,7 +42,9 @@ current version is stored in SQLite's `PRAGMA user_version`.
 films(id PK, title, original_title, year?, runtime_minutes?, synopsis,
       date_watched?, personal_rating?, notes, favorite, created_at?, updated_at?,
       -- v2 additions:
-      spanish_title, spanish_synopsis, review_count?)
+      spanish_title, spanish_synopsis, review_count?,
+      -- v3 additions:
+      watch_count, owned, wishlist)
 
 genres(film_id → films, genre, ord)
 people(id PK, name UNIQUE)

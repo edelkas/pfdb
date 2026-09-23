@@ -66,4 +66,88 @@ void write_csv(std::ostream& os, const std::vector<const Film*>& films) {
     }
 }
 
+namespace {
+
+std::string join_names(const Film& f, CreditRole role) {
+    std::string out;
+    for (const auto& c : f.credits) {
+        if (c.role == role) {
+            if (!out.empty()) {
+                out += "; ";
+            }
+            out += c.person.name;
+        }
+    }
+    return out;
+}
+
+std::string join_list(const std::vector<std::string>& xs) {
+    std::string out;
+    for (const auto& x : xs) {
+        if (!out.empty()) {
+            out += "; ";
+        }
+        out += x;
+    }
+    return out;
+}
+
+std::string imdb_ext_id(const Film& f) {
+    for (const auto& r : f.source_refs) {
+        if (r.source == "imdb") {
+            return r.external_id;
+        }
+    }
+    return {};
+}
+
+/// The unescaped cell value for one selected field.
+std::string cell(const Film& f, io::Field field) {
+    using io::Field;
+    switch (field) {
+        case Field::Title:         return f.title;
+        case Field::OriginalTitle: return f.original_title;
+        case Field::Year:          return opt_int(f.year);
+        case Field::Runtime:       return opt_int(f.runtime_minutes);
+        case Field::Synopsis:      return f.synopsis;
+        case Field::Genres:        return join_list(f.genres);
+        case Field::Cast:          return join_names(f, CreditRole::Actor);
+        case Field::Directors:     return join_names(f, CreditRole::Director);
+        case Field::Writers:       return join_names(f, CreditRole::Writer);
+        case Field::Composers:     return join_names(f, CreditRole::Composer);
+        case Field::Topics:        return join_list(f.topics);
+        case Field::Groups:        return join_list(f.groups);
+        case Field::ImdbId:        return imdb_ext_id(f);
+        case Field::ImdbRating:    return opt_double(query::source_rating(f, "imdb"));
+        case Field::UserRating:    return opt_double(f.user.personal_rating);
+        case Field::WatchDate:     return f.user.date_watched.value_or("");
+        case Field::WatchCount:    return std::to_string(f.user.watch_count);
+        case Field::Owned:         return f.user.owned ? "true" : "false";
+        case Field::Wishlist:      return f.user.wishlist ? "true" : "false";
+        case Field::Favorite:      return f.user.favorite ? "true" : "false";
+        case Field::Comments:      return f.user.notes;
+        case Field::VideoFile:     return f.video ? f.video->path : std::string();
+    }
+    return {};
+}
+
+}  // namespace
+
+void write_csv(std::ostream& os, const std::vector<const Film*>& films,
+               const io::FieldSet& selection) {
+    const std::vector<io::Field> cols = selection.fields();
+    os << "id";
+    for (io::Field c : cols) {
+        os << ',' << io::token_of(c);
+    }
+    os << "\r\n";
+    for (const Film* f : films) {
+        os << f->id;
+        for (io::Field c : cols) {
+            os << ',' << escape(cell(*f, c));
+        }
+        os << "\r\n";
+    }
+}
+
 }  // namespace pfdb

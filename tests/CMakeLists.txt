@@ -20,6 +20,13 @@ add_executable(pfdb_tests
     unit/test_sort.cpp
     unit/test_csv.cpp
     unit/test_query_engine.cpp
+    unit/test_emdb_decode.cpp
+    unit/test_emdb_parser.cpp
+    unit/test_emdb_map.cpp
+    unit/test_emdb_big.cpp
+    unit/test_field_set.cpp
+    unit/test_config.cpp
+    unit/test_import.cpp
 )
 
 # Tests reach into the internal headers under src/ (Repository, CollectionModel,

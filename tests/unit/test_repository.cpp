@@ -31,6 +31,9 @@ Film sample_film() {
     f.user.personal_rating = 9.0;
     f.user.notes = "Masterpiece.";
     f.user.favorite = true;
+    f.user.watch_count = 3;
+    f.user.owned = true;
+    f.user.wishlist = false;
     VideoFileInfo v;
     v.path = "/movies/blade_runner.mkv";
     v.size_bytes = std::int64_t{8'000'000'000};

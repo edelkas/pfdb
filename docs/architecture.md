@@ -37,8 +37,9 @@ never depends on any specific website.
 | `src/net/` | `pfdb::net` | `IHttpClient` + cpr-backed implementation (the fetch seam). |
 | `src/parse/` | `pfdb::parse` | `HtmlDocument`: a lexbor-backed HTML/CSS-selector wrapper for HTML sources. |
 | `src/sources/` | `pfdb::sources` | `ISource` plugin interface, registry, and the IMDb (JSON) + FilmAffinity (HTML) sources — each a fetcher plus pure parsers. |
-| `src/app/` | `pfdb::app` | Enrichment: two-source merge (IMDb wins shared fields) and layering user data onto fetched films. |
-| `src/io/` | `pfdb` | Serialization: JSON and CSV export (XLS later). |
+| `src/app/` | `pfdb::app` | Enrichment (two-source merge; layering user data) and import orchestration (`import_emdb`, upsert by IMDb id). |
+| `src/io/` | `pfdb` | Serialization (JSON, CSV export), the import/export `FieldSet`, and the EMDB reader (`io/emdb/`: decode → parse → map). |
+| `src/app/` (config) | `pfdb::config` | `Config`: user-level JSON config holding field presets. |
 | `src/cli/` | `pfdb::cli` | CLI11 front-end. |
 
 ## Key decisions
