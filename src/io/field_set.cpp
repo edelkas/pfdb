@@ -15,7 +15,7 @@ struct Entry {
 };
 
 // Canonical order + tokens for every field. Order here defines iteration order.
-constexpr std::array<Entry, 22> kEntries = {{
+constexpr std::array<Entry, 24> kEntries = {{
     {Field::Title, "title"},
     {Field::OriginalTitle, "original-title"},
     {Field::Year, "year"},
@@ -30,6 +30,8 @@ constexpr std::array<Entry, 22> kEntries = {{
     {Field::Groups, "groups"},
     {Field::ImdbId, "imdb-id"},
     {Field::ImdbRating, "imdb-rating"},
+    {Field::Budget, "budget"},
+    {Field::Gross, "gross"},
     {Field::UserRating, "user-rating"},
     {Field::WatchDate, "watch-date"},
     {Field::WatchCount, "watch-count"},

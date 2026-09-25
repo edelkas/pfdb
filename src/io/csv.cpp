@@ -119,6 +119,8 @@ std::string cell(const Film& f, io::Field field) {
         case Field::Groups:        return join_list(f.groups);
         case Field::ImdbId:        return imdb_ext_id(f);
         case Field::ImdbRating:    return opt_double(query::source_rating(f, "imdb"));
+        case Field::Budget:        return f.budget ? std::to_string(*f.budget) : std::string();
+        case Field::Gross:         return f.gross ? std::to_string(*f.gross) : std::string();
         case Field::UserRating:    return opt_double(f.user.personal_rating);
         case Field::WatchDate:     return f.user.date_watched.value_or("");
         case Field::WatchCount:    return std::to_string(f.user.watch_count);

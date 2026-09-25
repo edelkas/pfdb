@@ -30,6 +30,8 @@ enum class Field {
     Groups,
     ImdbId,
     ImdbRating,
+    Budget,
+    Gross,
     UserRating,
     WatchDate,
     WatchCount,

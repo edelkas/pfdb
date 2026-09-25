@@ -13,6 +13,9 @@ add_library(pfdb_core STATIC
     io/emdb/emdb_map.cpp
     app/config.cpp
     app/import.cpp
+    app/cover.cpp
+    app/player.cpp
+    media/mediainfo.cpp
     query/field.cpp
     query/filter.cpp
     query/expr.cpp
@@ -26,6 +29,8 @@ add_library(pfdb_core STATIC
     sources/imdb/imdb_source.cpp
     sources/filmaffinity/fa_parser.cpp
     sources/filmaffinity/fa_source.cpp
+    sources/boxofficemojo/bom_parser.cpp
+    sources/boxofficemojo/bom_source.cpp
     sources/source_registry.cpp
     app/enrichment.cpp
 )
@@ -45,7 +50,10 @@ target_link_libraries(pfdb_core
         spdlog::spdlog
         cpr::cpr
         lexbor::lexbor
+        mediainfo
+        zen
         pfdb_warnings
+        $<$<PLATFORM_ID:Windows>:shell32>
 )
 
 # Project version is made available to the code as a macro.

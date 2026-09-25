@@ -1,19 +1,24 @@
 #include "cli/commands.hpp"
 
 #include <exception>
+#include <fstream>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 
 #include <nlohmann/json.hpp>
 
 #include "app/config.hpp"
+#include "app/cover.hpp"
 #include "app/enrichment.hpp"
 #include "app/import.hpp"
+#include "app/player.hpp"
 #include "db/repository.hpp"
 #include "io/csv.hpp"
 #include "io/field_set.hpp"
 #include "io/film_json.hpp"
+#include "media/mediainfo.hpp"
 #include "model/collection_model.hpp"
 #include "net/http_client.hpp"
 #include "pfdb/film.hpp"
@@ -114,30 +119,41 @@ struct BuiltFilm {
     Film film;
     std::vector<sources::RelatedRef> relations;
     std::vector<sources::SimilarRef> similars;
+    std::string cover_url;  ///< Best cover URL across sources (IMDb preferred).
 };
 
-/// Fetch every source id present in `imdb_id`/`fa_id`, merge them, and return the
-/// combined film + edges. On failure prints a message, sets `exit_code`, returns
-/// nullopt. `apply_user` layers the manual `add` flags on top (skip for update).
+/// Fetch every requested source (imdb/fa/boxofficemojo), merge them, and return
+/// the combined film + edges + cover url. On failure prints a message, sets
+/// `exit_code`, returns nullopt.
 std::optional<BuiltFilm> build_from_sources(net::IHttpClient& http,
                                             const std::optional<std::string>& imdb_id,
                                             const std::optional<std::string>& fa_id,
+                                            const std::optional<std::string>& bom_id,
                                             int& exit_code) {
     try {
         std::optional<Film> imdb_film;
         std::optional<Film> fa_film;
+        std::optional<Film> bom_film;
         BuiltFilm built;
         if (imdb_id.has_value()) {
             sources::SourceFetch f = fetch_one(http, "imdb", *imdb_id);
             imdb_film = std::move(f.film);
+            built.cover_url = f.cover_url;
         }
         if (fa_id.has_value()) {
             sources::SourceFetch f = fetch_one(http, "filmaffinity", *fa_id);
             fa_film = std::move(f.film);
             built.relations = std::move(f.relations);
             built.similars = std::move(f.similars);
+            if (built.cover_url.empty()) {
+                built.cover_url = f.cover_url;
+            }
         }
-        built.film = app::merge_films(imdb_film, fa_film);
+        if (bom_id.has_value()) {
+            sources::SourceFetch f = fetch_one(http, "boxofficemojo", *bom_id);
+            bom_film = std::move(f.film);
+        }
+        built.film = app::merge_films(imdb_film, fa_film, bom_film);
         return built;
     } catch (const sources::SourceError& e) {
         std::cerr << "error: " << e.what() << '\n';
@@ -190,13 +206,22 @@ int cmd_init(const GlobalOptions& opts) {
 int cmd_add(const GlobalOptions& opts, const AddArgs& args) {
     const bool fetch_path = args.imdb_id.has_value() || args.fa_id.has_value();
 
+    if (args.financials && !args.imdb_id.has_value()) {
+        std::cerr << "error: --financials needs --imdb (BoxOfficeMojo uses IMDb ids)\n";
+        return kUsageError;
+    }
+
+    // A network client is needed for fetching and for downloading a cover.
+    net::CprHttpClient http;
+
     // Build the film either by fetching from source(s) or from manual flags.
     Film film;
     BuiltFilm built;
     if (fetch_path) {
-        net::CprHttpClient http;
+        const std::optional<std::string> bom_id =
+            args.financials ? args.imdb_id : std::nullopt;
         int exit_code = kOk;
-        auto result = build_from_sources(http, args.imdb_id, args.fa_id, exit_code);
+        auto result = build_from_sources(http, args.imdb_id, args.fa_id, bom_id, exit_code);
         if (!result) {
             return exit_code;
         }
@@ -232,6 +257,9 @@ int cmd_add(const GlobalOptions& opts, const AddArgs& args) {
     try {
         const Id id = repo->insert(film);
         store_edges(*repo, id, built.relations, built.similars);
+        if (args.cover && !app::fetch_and_store_cover(*repo, http, id, built.cover_url)) {
+            std::cerr << "note: could not fetch a cover for film #" << id << '\n';
+        }
         const auto stored = repo->find(id);
         if (opts.json && stored) {
             std::cout << to_json(*stored).dump(2) << '\n';
@@ -268,6 +296,7 @@ nlohmann::json film_json_with_edges(const db::Repository& repo,
                             {"percent", e.percent}});
     }
     obj["similarities"] = std::move(similars);
+    obj["has_cover"] = repo.has_cover(f.id);
     return obj;
 }
 
@@ -365,14 +394,15 @@ int update_one(db::Repository& repo, net::IHttpClient& http, const Film& existin
                int& updated) {
     const auto imdb_id = ref_for(existing, "imdb");
     const auto fa_id = ref_for(existing, "filmaffinity");
-    if (!imdb_id.has_value() && !fa_id.has_value()) {
+    const auto bom_id = ref_for(existing, "boxofficemojo");
+    if (!imdb_id.has_value() && !fa_id.has_value() && !bom_id.has_value()) {
         std::cerr << "note: film #" << existing.id
                   << " has no online sources; skipping\n";
         return kOk;
     }
 
     int exit_code = kOk;
-    auto result = build_from_sources(http, imdb_id, fa_id, exit_code);
+    auto result = build_from_sources(http, imdb_id, fa_id, bom_id, exit_code);
     if (!result) {
         return exit_code;
     }
@@ -630,6 +660,134 @@ int cmd_preset(const GlobalOptions& opts, const PresetArgs& args) {
             return kOk;
         }
     }
+    return kOk;
+}
+
+int cmd_scan(const GlobalOptions& opts, const ScanArgs& args) {
+    if (args.id == kInvalidId) {
+        std::cerr << "error: provide a film id to scan\n";
+        return kUsageError;
+    }
+    auto repo = open_repo(opts);
+    if (!repo) {
+        return kRuntimeError;
+    }
+    auto film = repo->find(args.id);
+    if (!film) {
+        std::cerr << "error: no film with id " << args.id << '\n';
+        return kNotFound;
+    }
+
+    std::string path = args.file;
+    if (path.empty() && film->video.has_value()) {
+        path = film->video->path;
+    }
+    if (path.empty()) {
+        std::cerr << "error: no file to scan; pass --file or set a video path first\n";
+        return kUsageError;
+    }
+
+    try {
+        film->video = media::probe(path);
+    } catch (const std::exception& e) {
+        std::cerr << "error: " << e.what() << '\n';
+        return kRuntimeError;
+    }
+    if (!repo->update(*film)) {
+        std::cerr << "error: failed to update film #" << args.id << '\n';
+        return kRuntimeError;
+    }
+
+    const auto stored = repo->find(args.id);
+    if (opts.json && stored) {
+        std::cout << to_json(*stored).dump(2) << '\n';
+    } else if (stored && stored->video.has_value()) {
+        const auto& v = *stored->video;
+        std::cout << "Scanned film #" << args.id << ": " << (v.width ? *v.width : 0) << 'x'
+                  << (v.height ? *v.height : 0) << ", " << v.audio_tracks.size()
+                  << " audio + " << v.subtitle_tracks.size() << " subtitle track(s).\n";
+    }
+    return kOk;
+}
+
+int cmd_cover(const GlobalOptions& opts, const CoverArgs& args) {
+    if (args.id == kInvalidId) {
+        std::cerr << "error: provide a film id\n";
+        return kUsageError;
+    }
+    auto repo = open_repo(opts);
+    if (!repo) {
+        return kRuntimeError;
+    }
+    if (!repo->find(args.id)) {
+        std::cerr << "error: no film with id " << args.id << '\n';
+        return kNotFound;
+    }
+
+    if (!args.set.empty()) {
+        std::ifstream in(args.set, std::ios::binary);
+        if (!in) {
+            std::cerr << "error: could not read '" << args.set << "'\n";
+            return kRuntimeError;
+        }
+        std::ostringstream ss;
+        ss << in.rdbuf();
+        const std::string bytes = ss.str();
+        repo->set_cover(args.id, app::mime_from_url(args.set), bytes);
+        std::cout << "Set cover for film #" << args.id << " (" << bytes.size()
+                  << " bytes).\n";
+        return kOk;
+    }
+
+    auto cover = repo->get_cover(args.id);
+    if (!cover) {
+        std::cerr << "error: film #" << args.id << " has no cover\n";
+        return kNotFound;
+    }
+    if (!args.out.empty()) {
+        std::ofstream out(args.out, std::ios::binary | std::ios::trunc);
+        if (!out) {
+            std::cerr << "error: could not write '" << args.out << "'\n";
+            return kRuntimeError;
+        }
+        out.write(cover->bytes.data(), static_cast<std::streamsize>(cover->bytes.size()));
+        std::cout << "Wrote " << cover->bytes.size() << " bytes to " << args.out << ".\n";
+        return kOk;
+    }
+
+    if (opts.json) {
+        std::cout << nlohmann::json{{"id", args.id},
+                                    {"mime", cover->mime},
+                                    {"size_bytes", cover->bytes.size()}}
+                         .dump(2)
+                  << '\n';
+    } else {
+        std::cout << "Film #" << args.id << " has a " << cover->mime << " cover ("
+                  << cover->bytes.size() << " bytes). Use --out to export it.\n";
+    }
+    return kOk;
+}
+
+int cmd_play(const GlobalOptions& opts, Id id) {
+    auto repo = open_repo(opts);
+    if (!repo) {
+        return kRuntimeError;
+    }
+    auto film = repo->find(id);
+    if (!film) {
+        std::cerr << "error: no film with id " << id << '\n';
+        return kNotFound;
+    }
+    if (!film->video.has_value() || film->video->path.empty()) {
+        std::cerr << "error: film #" << id << " has no video file path\n";
+        return kUsageError;
+    }
+    if (!app::open_in_default_app(film->video->path)) {
+        std::cerr << "error: could not launch a player for '" << film->video->path
+                  << "'\n";
+        return kRuntimeError;
+    }
+    std::cout << "Opening " << film->video->path << " ...\n";
     return kOk;
 }
 

@@ -22,7 +22,7 @@ A *field* is a selectable unit of film data. Tokens are kebab-case:
 ```
 title  original-title  year  runtime  synopsis  genres
 cast  directors  writers  composers  topics  groups
-imdb-id  imdb-rating  user-rating
+imdb-id  imdb-rating  budget  gross  user-rating
 watch-date  watch-count  owned  wishlist  favorite  comments
 video-file
 ```

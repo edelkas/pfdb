@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -20,5 +21,10 @@ std::vector<SearchResult> parse_suggestions(std::string_view json);
 /// Throws SourceError{NotFound} when the id resolves to no real title, and
 /// SourceError{Parse} on malformed JSON or a GraphQL error response.
 Film parse_title(std::string_view json);
+
+/// Extract the primary image (cover/poster) URL from a GraphQL title response,
+/// or "" if absent. Malformed JSON yields "" (the caller already validates the
+/// title via parse_title).
+std::string parse_primary_image(std::string_view json);
 
 }  // namespace pfdb::sources::imdb

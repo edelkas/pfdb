@@ -61,8 +61,9 @@ in `tools/capture_imdb_fixtures.py`). Field mapping into `Film`:
 | `principalCredits[]` → `credits[].name.nameText.text` | `credits` (Director→Director, Writers→Writer, Stars→Actor) |
 | title `id` | `source_refs[0]` (`fetched_at` stamped by the fetcher) |
 
-`primaryImage.url` and the title `type` are fetched but not yet stored — there is
-no schema field for a cover or a title type; both arrive in a later milestone.
+`primaryImage.url` is parsed and carried on the fetch result as the film's cover
+URL (capped to ~640px wide); `pfdb add --cover` downloads it into the `covers`
+table. The title `type` is fetched but not yet stored.
 
 ### Not-found
 

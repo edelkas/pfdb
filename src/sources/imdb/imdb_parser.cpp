@@ -199,4 +199,12 @@ Film parse_title(std::string_view json_text) {
     return f;
 }
 
+std::string parse_primary_image(std::string_view json_text) {
+    json j = json::parse(json_text, nullptr, /*allow_exceptions=*/false);
+    if (j.is_discarded()) {
+        return {};
+    }
+    return str_or(path(j, "data", "title", "primaryImage", "url"));
+}
+
 }  // namespace pfdb::sources::imdb

@@ -125,6 +125,43 @@ constexpr std::array kMigrations = {
         ALTER TABLE films ADD COLUMN owned       INTEGER NOT NULL DEFAULT 0;
         ALTER TABLE films ADD COLUMN wishlist    INTEGER NOT NULL DEFAULT 0;
     )sql",
+    // v3 -> v4: financials, richer video-file metadata (tracks), and cover art.
+    R"sql(
+        ALTER TABLE films ADD COLUMN budget INTEGER;
+        ALTER TABLE films ADD COLUMN gross  INTEGER;
+
+        ALTER TABLE video_files ADD COLUMN framerate     REAL;
+        ALTER TABLE video_files ADD COLUMN video_bitrate INTEGER;
+
+        CREATE TABLE audio_tracks (
+            film_id     INTEGER NOT NULL REFERENCES films(id) ON DELETE CASCADE,
+            ord         INTEGER NOT NULL DEFAULT 0,
+            name        TEXT    NOT NULL DEFAULT '',
+            language    TEXT    NOT NULL DEFAULT '',
+            size_bytes  INTEGER,
+            codec       TEXT    NOT NULL DEFAULT '',
+            bitrate     INTEGER,
+            channels    INTEGER,
+            sample_rate INTEGER
+        );
+        CREATE INDEX idx_audio_tracks_film ON audio_tracks(film_id);
+
+        CREATE TABLE subtitle_tracks (
+            film_id    INTEGER NOT NULL REFERENCES films(id) ON DELETE CASCADE,
+            ord        INTEGER NOT NULL DEFAULT 0,
+            name       TEXT    NOT NULL DEFAULT '',
+            language   TEXT    NOT NULL DEFAULT '',
+            size_bytes INTEGER,
+            format     TEXT    NOT NULL DEFAULT ''
+        );
+        CREATE INDEX idx_subtitle_tracks_film ON subtitle_tracks(film_id);
+
+        CREATE TABLE covers (
+            film_id INTEGER PRIMARY KEY REFERENCES films(id) ON DELETE CASCADE,
+            mime    TEXT NOT NULL DEFAULT '',
+            image   BLOB NOT NULL
+        );
+    )sql",
 };
 
 UnixSeconds now_unix() {
@@ -310,24 +347,68 @@ void Repository::write_related(Id film_id, const Film& film) {
     }
     if (film.video.has_value()) {
         const auto& v = *film.video;
-        SQLite::Statement stmt(
-            *db_,
-            "INSERT INTO video_files(film_id, path, size_bytes, duration_seconds, "
-            "width, height, codec) VALUES(?, ?, ?, ?, ?, ?, ?)");
-        stmt.bind(1, film_id);
-        stmt.bind(2, v.path);
-        bind_opt(stmt, 3, v.size_bytes);
-        bind_opt(stmt, 4, v.duration_seconds);
-        bind_opt(stmt, 5, v.width);
-        bind_opt(stmt, 6, v.height);
-        stmt.bind(7, v.codec);
-        stmt.exec();
+        {
+            SQLite::Statement stmt(
+                *db_,
+                "INSERT INTO video_files(film_id, path, size_bytes, duration_seconds, "
+                "width, height, codec, framerate, video_bitrate) "
+                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            stmt.bind(1, film_id);
+            stmt.bind(2, v.path);
+            bind_opt(stmt, 3, v.size_bytes);
+            bind_opt(stmt, 4, v.duration_seconds);
+            bind_opt(stmt, 5, v.width);
+            bind_opt(stmt, 6, v.height);
+            stmt.bind(7, v.codec);
+            bind_opt(stmt, 8, v.framerate);
+            bind_opt(stmt, 9, v.video_bitrate);
+            stmt.exec();
+        }
+        {
+            SQLite::Statement stmt(
+                *db_,
+                "INSERT INTO audio_tracks(film_id, ord, name, language, size_bytes, "
+                "codec, bitrate, channels, sample_rate) "
+                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            int ord = 0;
+            for (const auto& a : v.audio_tracks) {
+                stmt.bind(1, film_id);
+                stmt.bind(2, ord++);
+                stmt.bind(3, a.name);
+                stmt.bind(4, a.language);
+                bind_opt(stmt, 5, a.size_bytes);
+                stmt.bind(6, a.codec);
+                bind_opt(stmt, 7, a.bitrate);
+                bind_opt(stmt, 8, a.channels);
+                bind_opt(stmt, 9, a.sample_rate);
+                stmt.exec();
+                stmt.reset();
+            }
+        }
+        {
+            SQLite::Statement stmt(
+                *db_,
+                "INSERT INTO subtitle_tracks(film_id, ord, name, language, size_bytes, "
+                "format) VALUES(?, ?, ?, ?, ?, ?)");
+            int ord = 0;
+            for (const auto& s : v.subtitle_tracks) {
+                stmt.bind(1, film_id);
+                stmt.bind(2, ord++);
+                stmt.bind(3, s.name);
+                stmt.bind(4, s.language);
+                bind_opt(stmt, 5, s.size_bytes);
+                stmt.bind(6, s.format);
+                stmt.exec();
+                stmt.reset();
+            }
+        }
     }
 }
 
 void Repository::delete_related(Id film_id) {
     for (const char* table : {"genres", "topics", "movie_groups", "credits", "ratings",
-                              "source_refs", "video_files"}) {
+                              "source_refs", "video_files", "audio_tracks",
+                              "subtitle_tracks"}) {
         SQLite::Statement stmt(*db_,
                                std::string("DELETE FROM ") + table + " WHERE film_id = ?");
         stmt.bind(1, film_id);
@@ -344,8 +425,8 @@ Id Repository::insert(const Film& film) {
             "INSERT INTO films(title, original_title, year, runtime_minutes, "
             "synopsis, date_watched, personal_rating, notes, favorite, "
             "created_at, updated_at, spanish_title, spanish_synopsis, review_count, "
-            "watch_count, owned, wishlist) "
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            "watch_count, owned, wishlist, budget, gross) "
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         stmt.bind(1, film.title);
         stmt.bind(2, film.original_title);
         bind_opt(stmt, 3, film.year);
@@ -363,6 +444,8 @@ Id Repository::insert(const Film& film) {
         stmt.bind(15, film.user.watch_count);
         stmt.bind(16, film.user.owned ? 1 : 0);
         stmt.bind(17, film.user.wishlist ? 1 : 0);
+        bind_opt(stmt, 18, film.budget);
+        bind_opt(stmt, 19, film.gross);
         stmt.exec();
     }
     const Id film_id = db_->getLastInsertRowid();
@@ -381,7 +464,7 @@ bool Repository::update(const Film& film) {
             "UPDATE films SET title=?, original_title=?, year=?, runtime_minutes=?, "
             "synopsis=?, date_watched=?, personal_rating=?, notes=?, favorite=?, "
             "updated_at=?, spanish_title=?, spanish_synopsis=?, review_count=?, "
-            "watch_count=?, owned=?, wishlist=? "
+            "watch_count=?, owned=?, wishlist=?, budget=?, gross=? "
             "WHERE id=?");
         stmt.bind(1, film.title);
         stmt.bind(2, film.original_title);
@@ -399,7 +482,9 @@ bool Repository::update(const Film& film) {
         stmt.bind(14, film.user.watch_count);
         stmt.bind(15, film.user.owned ? 1 : 0);
         stmt.bind(16, film.user.wishlist ? 1 : 0);
-        stmt.bind(17, film.id);
+        bind_opt(stmt, 17, film.budget);
+        bind_opt(stmt, 18, film.gross);
+        stmt.bind(19, film.id);
         changed = stmt.exec();
     }
     if (changed == 0) {
@@ -444,13 +529,44 @@ Film read_film_row(SQLite::Statement& stmt) {
     f.user.watch_count = stmt.getColumn(15).getInt();
     f.user.owned = stmt.getColumn(16).getInt() != 0;
     f.user.wishlist = stmt.getColumn(17).getInt() != 0;
+    f.budget = get_opt_int64(stmt, 18);
+    f.gross = get_opt_int64(stmt, 19);
     return f;
 }
 
 constexpr const char* kFilmColumns =
     "id, title, original_title, year, runtime_minutes, synopsis, date_watched, "
     "personal_rating, notes, favorite, created_at, updated_at, "
-    "spanish_title, spanish_synopsis, review_count, watch_count, owned, wishlist";
+    "spanish_title, spanish_synopsis, review_count, watch_count, owned, wishlist, "
+    "budget, gross";
+
+// Read an audio track from a statement whose columns, starting at `base`, are
+// (name, language, size_bytes, codec, bitrate, channels, sample_rate).
+AudioTrack read_audio_track(SQLite::Statement& q, int base) {
+    AudioTrack a;
+    a.name = q.getColumn(base + 0).getString();
+    a.language = q.getColumn(base + 1).getString();
+    a.size_bytes = get_opt_int64(q, base + 2);
+    a.codec = q.getColumn(base + 3).getString();
+    a.bitrate = get_opt_int(q, base + 4);
+    a.channels = get_opt_int(q, base + 5);
+    a.sample_rate = get_opt_int(q, base + 6);
+    return a;
+}
+
+// Read a subtitle track: (name, language, size_bytes, format) from `base`.
+SubtitleTrack read_subtitle_track(SQLite::Statement& q, int base) {
+    SubtitleTrack s;
+    s.name = q.getColumn(base + 0).getString();
+    s.language = q.getColumn(base + 1).getString();
+    s.size_bytes = get_opt_int64(q, base + 2);
+    s.format = q.getColumn(base + 3).getString();
+    return s;
+}
+
+constexpr const char* kAudioTrackColumns =
+    "name, language, size_bytes, codec, bitrate, channels, sample_rate";
+constexpr const char* kSubtitleTrackColumns = "name, language, size_bytes, format";
 
 }  // namespace
 
@@ -532,8 +648,8 @@ std::optional<Film> Repository::find(Id id) const {
     {
         SQLite::Statement q(
             *db_,
-            "SELECT path, size_bytes, duration_seconds, width, height, codec "
-            "FROM video_files WHERE film_id = ?");
+            "SELECT path, size_bytes, duration_seconds, width, height, codec, "
+            "framerate, video_bitrate FROM video_files WHERE film_id = ?");
         q.bind(1, id);
         if (q.executeStep()) {
             VideoFileInfo v;
@@ -543,6 +659,26 @@ std::optional<Film> Repository::find(Id id) const {
             v.width = get_opt_int(q, 3);
             v.height = get_opt_int(q, 4);
             v.codec = q.getColumn(5).getString();
+            v.framerate = get_opt_double(q, 6);
+            v.video_bitrate = get_opt_int(q, 7);
+            {
+                SQLite::Statement aq(*db_, std::string("SELECT ") + kAudioTrackColumns +
+                                               " FROM audio_tracks WHERE film_id = ? "
+                                               "ORDER BY ord");
+                aq.bind(1, id);
+                while (aq.executeStep()) {
+                    v.audio_tracks.push_back(read_audio_track(aq, 0));
+                }
+            }
+            {
+                SQLite::Statement sq(*db_, std::string("SELECT ") + kSubtitleTrackColumns +
+                                               " FROM subtitle_tracks WHERE film_id = ? "
+                                               "ORDER BY ord");
+                sq.bind(1, id);
+                while (sq.executeStep()) {
+                    v.subtitle_tracks.push_back(read_subtitle_track(sq, 0));
+                }
+            }
             f.video = std::move(v);
         }
     }
@@ -645,8 +781,8 @@ std::vector<Film> Repository::load_all() const {
     {
         SQLite::Statement q(
             *db_,
-            "SELECT film_id, path, size_bytes, duration_seconds, width, height, codec "
-            "FROM video_files");
+            "SELECT film_id, path, size_bytes, duration_seconds, width, height, codec, "
+            "framerate, video_bitrate FROM video_files");
         while (q.executeStep()) {
             if (Film* f = film_at(q.getColumn(0).getInt64())) {
                 VideoFileInfo v;
@@ -656,7 +792,29 @@ std::vector<Film> Repository::load_all() const {
                 v.width = get_opt_int(q, 4);
                 v.height = get_opt_int(q, 5);
                 v.codec = q.getColumn(6).getString();
+                v.framerate = get_opt_double(q, 7);
+                v.video_bitrate = get_opt_int(q, 8);
                 f->video = std::move(v);
+            }
+        }
+    }
+    {
+        SQLite::Statement q(*db_, std::string("SELECT film_id, ") + kAudioTrackColumns +
+                                      " FROM audio_tracks ORDER BY film_id, ord");
+        while (q.executeStep()) {
+            Film* f = film_at(q.getColumn(0).getInt64());
+            if (f != nullptr && f->video.has_value()) {
+                f->video->audio_tracks.push_back(read_audio_track(q, 1));
+            }
+        }
+    }
+    {
+        SQLite::Statement q(*db_, std::string("SELECT film_id, ") + kSubtitleTrackColumns +
+                                      " FROM subtitle_tracks ORDER BY film_id, ord");
+        while (q.executeStep()) {
+            Film* f = film_at(q.getColumn(0).getInt64());
+            if (f != nullptr && f->video.has_value()) {
+                f->video->subtitle_tracks.push_back(read_subtitle_track(q, 1));
             }
         }
     }
@@ -766,6 +924,45 @@ std::vector<Repository::SimilarityPair> Repository::load_similarity_pairs() cons
     SQLite::Statement q(*db_, "SELECT a_id, b_id FROM similarities");
     while (q.executeStep()) {
         out.push_back(SimilarityPair{q.getColumn(0).getInt64(), q.getColumn(1).getInt64()});
+    }
+    return out;
+}
+
+void Repository::set_cover(Id film_id, const std::string& mime,
+                           const std::string& bytes) {
+    SQLite::Statement stmt(
+        *db_, "INSERT OR REPLACE INTO covers(film_id, mime, image) VALUES(?, ?, ?)");
+    stmt.bind(1, film_id);
+    stmt.bind(2, mime);
+    stmt.bind(3, bytes.data(), static_cast<int>(bytes.size()));
+    stmt.exec();
+}
+
+std::optional<Repository::Cover> Repository::get_cover(Id film_id) const {
+    SQLite::Statement q(*db_, "SELECT mime, image FROM covers WHERE film_id = ?");
+    q.bind(1, film_id);
+    if (!q.executeStep()) {
+        return std::nullopt;
+    }
+    Cover cover;
+    cover.mime = q.getColumn(0).getString();
+    const SQLite::Column blob = q.getColumn(1);
+    cover.bytes.assign(static_cast<const char*>(blob.getBlob()),
+                       static_cast<std::size_t>(blob.getBytes()));
+    return cover;
+}
+
+bool Repository::has_cover(Id film_id) const {
+    SQLite::Statement q(*db_, "SELECT 1 FROM covers WHERE film_id = ? LIMIT 1");
+    q.bind(1, film_id);
+    return q.executeStep();
+}
+
+std::vector<Id> Repository::ids_with_cover() const {
+    std::vector<Id> out;
+    SQLite::Statement q(*db_, "SELECT film_id FROM covers");
+    while (q.executeStep()) {
+        out.push_back(q.getColumn(0).getInt64());
     }
     return out;
 }

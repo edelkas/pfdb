@@ -25,6 +25,8 @@ nlohmann::json to_json(const Film& film) {
     j["runtime_minutes"] = opt(film.runtime_minutes);
     j["synopsis"] = film.synopsis;
     j["genres"] = film.genres;
+    j["budget"] = opt(film.budget);
+    j["gross"] = opt(film.gross);
     j["spanish_title"] = film.spanish_title;
     j["spanish_synopsis"] = film.spanish_synopsis;
     j["review_count"] = opt(film.review_count);
@@ -72,6 +74,27 @@ nlohmann::json to_json(const Film& film) {
 
     if (film.video.has_value()) {
         const auto& v = *film.video;
+        nlohmann::json audio = nlohmann::json::array();
+        for (const auto& a : v.audio_tracks) {
+            audio.push_back({
+                {"name", a.name},
+                {"language", a.language},
+                {"codec", a.codec},
+                {"size_bytes", opt(a.size_bytes)},
+                {"bitrate", opt(a.bitrate)},
+                {"channels", opt(a.channels)},
+                {"sample_rate", opt(a.sample_rate)},
+            });
+        }
+        nlohmann::json subtitles = nlohmann::json::array();
+        for (const auto& s : v.subtitle_tracks) {
+            subtitles.push_back({
+                {"name", s.name},
+                {"language", s.language},
+                {"format", s.format},
+                {"size_bytes", opt(s.size_bytes)},
+            });
+        }
         j["video"] = {
             {"path", v.path},
             {"size_bytes", opt(v.size_bytes)},
@@ -79,6 +102,10 @@ nlohmann::json to_json(const Film& film) {
             {"width", opt(v.width)},
             {"height", opt(v.height)},
             {"codec", v.codec},
+            {"framerate", opt(v.framerate)},
+            {"video_bitrate", opt(v.video_bitrate)},
+            {"audio_tracks", std::move(audio)},
+            {"subtitle_tracks", std::move(subtitles)},
         };
     } else {
         j["video"] = nullptr;

@@ -44,7 +44,7 @@ by spaces; the symbolic operators need not be.
 | Field(s) | Type | Notes |
 |---|---|---|
 | `title`, `original_title`, `spanish_title`, `synopsis`, `spanish_synopsis`, `notes` | text | `~` / `=~` |
-| `year`, `runtime`, `my_rating`, `watch_count`, `review_count`, `imdb_rating`, `fa_rating` | number | ranges/compares |
+| `year`, `runtime`, `my_rating`, `watch_count`, `review_count`, `imdb_rating`, `fa_rating`, `budget`, `gross` | number | ranges/compares |
 | `date_watched` | date | ranges/compares |
 | `genre`, `topic`, `group` | string list | `has` = exact (case-insensitive) member |
 | `cast`, `director`, `writer` | name list | `has` = name match → ids (see below) |

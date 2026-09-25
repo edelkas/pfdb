@@ -84,6 +84,7 @@ SourceFetch FaSource::fetch(std::string_view external_id) {
 
     SourceFetch out;
     out.film = std::move(parsed.film);
+    out.cover_url = std::move(parsed.cover_url);
     // Stamp our source ref with the requested id and fetch time.
     for (auto& ref : out.film.source_refs) {
         if (ref.source == "filmaffinity") {

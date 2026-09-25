@@ -16,6 +16,8 @@ Film sample_film() {
     f.runtime_minutes = 117;
     f.synopsis = "A blade runner hunts replicants.";
     f.genres = {"Sci-Fi", "Thriller"};
+    f.budget = 28000000;
+    f.gross = 41600000;
     f.credits = {
         {Person{0, "Ridley Scott"}, CreditRole::Director, "", 0},
         {Person{0, "Harrison Ford"}, CreditRole::Actor, "Rick Deckard", 1},
@@ -41,6 +43,16 @@ Film sample_film() {
     v.width = 1920;
     v.height = 1080;
     v.codec = "mkv/h265";
+    v.framerate = 23.976;
+    v.video_bitrate = 12000000;
+    v.audio_tracks = {
+        {"Main", "English", "AC-3", std::int64_t{500'000'000}, 640000, 6, 48000},
+        {"Commentary", "English", "AAC", std::nullopt, 128000, 2, 48000},
+    };
+    v.subtitle_tracks = {
+        {"Forced", "English", "PGS", std::int64_t{2'000'000}},
+        {"Full", "Spanish", "SRT", std::nullopt},
+    };
     f.video = v;
     return f;
 }
@@ -198,6 +210,35 @@ TEST_CASE("load_all returns every film fully populated", "[db]") {
     REQUIRE(all[0].title == "Blade Runner");
     REQUIRE(all[0].credits.size() == 2);
     REQUIRE(all[0].video.has_value());
+    REQUIRE(all[0].video->audio_tracks.size() == 2);
+    REQUIRE(all[0].video->subtitle_tracks.size() == 2);
+    REQUIRE(all[0].budget == 28000000);
     REQUIRE(all[1].title == "Alien");
     REQUIRE(all[1].credits.empty());
+}
+
+TEST_CASE("covers are stored, fetched, and cascade-deleted", "[db]") {
+    db::Repository repo(":memory:");
+    const Id id = repo.insert(sample_film());
+
+    REQUIRE_FALSE(repo.has_cover(id));
+    REQUIRE_FALSE(repo.get_cover(id).has_value());
+
+    const std::string bytes("\x89PNG\r\n\x1a\n\x00\x01\x02", 11);  // binary, with a NUL
+    repo.set_cover(id, "image/png", bytes);
+
+    REQUIRE(repo.has_cover(id));
+    const auto cover = repo.get_cover(id);
+    REQUIRE(cover.has_value());
+    REQUIRE(cover->mime == "image/png");
+    REQUIRE(cover->bytes == bytes);  // exact bytes, including the embedded NUL
+    REQUIRE(repo.ids_with_cover() == std::vector<Id>{id});
+
+    // Covers survive a film update (they are not part of the Film value).
+    REQUIRE(repo.update(*repo.find(id)));
+    REQUIRE(repo.has_cover(id));
+
+    // ... but are cascade-deleted with the film.
+    REQUIRE(repo.remove(id));
+    REQUIRE_FALSE(repo.has_cover(id));
 }

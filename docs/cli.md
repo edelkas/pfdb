@@ -66,6 +66,8 @@ fetched data (e.g. set your own `--favorite`/`--date-watched`, or override the
 | `--rating` | Your personal rating (0–10). |
 | `--notes` | Free-form notes. |
 | `--favorite` | Mark as a favourite. |
+| `--financials` | Also fetch budget + total gross from BoxOfficeMojo (needs `--imdb`; reuses the IMDb id). |
+| `--cover` | Download the film's cover art and store it in the database. |
 | `--dry-run` | Fetch/build the film and print it, but do not save. |
 
 ```sh
@@ -165,6 +167,42 @@ pfdb preset remove mine
 
 Built-in presets (`all`, `userdata`, `metadata`) are reserved. See
 [configuration.md](configuration.md).
+
+### `pfdb scan`
+
+Read a local video file's technical metadata (via MediaInfo) and store it on the
+film: size, duration, resolution, frame rate, bitrate, codec, and the audio and
+subtitle tracks. See [video-metadata.md](video-metadata.md).
+
+| Option | Description |
+|---|---|
+| `id` | Film id (positional). |
+| `--file <path>` | The video file. Defaults to the film's already-stored path. |
+
+```sh
+pfdb scan 1 --file "/movies/blade_runner_2049.mkv"
+```
+
+### `pfdb cover`
+
+Export or set a film's cover art (stored as a blob in the database).
+
+| Option | Description |
+|---|---|
+| `id` | Film id (positional). |
+| `--out <file>` | Write the stored cover image to this file. |
+| `--set <file>` | Set the cover from this local image file. |
+
+With neither flag, reports whether a cover is present. Covers are fetched during
+`add`/`update` with `--cover` (from IMDb or FilmAffinity).
+
+### `pfdb play`
+
+Open a film's stored video file in the operating system's default player.
+
+```sh
+pfdb play 1
+```
 
 ### `pfdb remove`
 

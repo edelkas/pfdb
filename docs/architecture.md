@@ -36,7 +36,8 @@ never depends on any specific website.
 | `src/query/` | `pfdb::query` | The query engine: field registry, filters, the boolean-expression AST, the parsers, name→id normalization, sort, and the `run_query` entry point. |
 | `src/net/` | `pfdb::net` | `IHttpClient` + cpr-backed implementation (the fetch seam). |
 | `src/parse/` | `pfdb::parse` | `HtmlDocument`: a lexbor-backed HTML/CSS-selector wrapper for HTML sources. |
-| `src/sources/` | `pfdb::sources` | `ISource` plugin interface, registry, and the IMDb (JSON) + FilmAffinity (HTML) sources — each a fetcher plus pure parsers. |
+| `src/sources/` | `pfdb::sources` | `ISource` plugin interface, registry, and the IMDb (JSON) + FilmAffinity (HTML) + BoxOfficeMojo (HTML, financials) sources — each a fetcher plus pure parsers. |
+| `src/media/` | `pfdb::media` | `probe()`: local video-file metadata via MediaInfo (libmediainfo). |
 | `src/app/` | `pfdb::app` | Enrichment (two-source merge; layering user data) and import orchestration (`import_emdb`, upsert by IMDb id). |
 | `src/io/` | `pfdb` | Serialization (JSON, CSV export), the import/export `FieldSet`, and the EMDB reader (`io/emdb/`: decode → parse → map). |
 | `src/app/` (config) | `pfdb::config` | `Config`: user-level JSON config holding field presets. |

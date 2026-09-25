@@ -68,3 +68,20 @@ TEST_CASE("merge with a single source passes it through", "[merge]") {
     REQUIRE(only_fa.spanish_title == "Blade Runner");
     REQUIRE(only_fa.title == "Blade Runner");  // FA fallback title
 }
+
+TEST_CASE("merge overlays BoxOfficeMojo financials", "[merge]") {
+    Film bom;
+    bom.budget = 30000000;
+    bom.gross = 41600000;
+    bom.source_refs.push_back({"boxofficemojo", "tt0083658", std::nullopt});
+
+    const Film m = app::merge_films(imdb_film(), fa_film(), bom);
+    REQUIRE(m.title == "Blade Runner");         // IMDb still wins shared fields
+    REQUIRE(m.budget == 30000000);
+    REQUIRE(m.gross == 41600000);
+    REQUIRE(m.source_refs.size() == 3);         // imdb + fa + boxofficemojo
+
+    // BOM alone still contributes its financials.
+    const Film only_bom = app::merge_films(std::nullopt, std::nullopt, bom);
+    REQUIRE(only_bom.budget == 30000000);
+}

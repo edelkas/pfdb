@@ -53,6 +53,8 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(cpr CONFIG REQUIRED)
 find_package(lexbor CONFIG REQUIRED)
+find_package(zenlib CONFIG REQUIRED)
+find_package(mediainfolib CONFIG REQUIRED)
 
 # ---------------------------------------------------------------------------
 # Core library.

@@ -106,6 +106,22 @@ public:
     /// All similarity edges in the database.
     std::vector<SimilarityPair> load_similarity_pairs() const;
 
+    /// Cover-art image bytes plus their media type. Stored in their own table and
+    /// never loaded into the in-memory model, so blobs don't bloat startup.
+    struct Cover {
+        std::string mime;
+        std::string bytes;
+    };
+
+    /// Store (or replace) the cover image for `film_id`.
+    void set_cover(Id film_id, const std::string& mime, const std::string& bytes);
+    /// Fetch the cover image for `film_id`, or nullopt if none.
+    std::optional<Cover> get_cover(Id film_id) const;
+    /// Whether `film_id` has a stored cover.
+    bool has_cover(Id film_id) const;
+    /// Ids of every film that has a cover (for bulk display).
+    std::vector<Id> ids_with_cover() const;
+
 private:
     std::unique_ptr<SQLite::Database> db_;
 

@@ -37,8 +37,14 @@ begins. Later milestones are re-planned in detail as they're reached.
   to redownload metadata. See [importing.md](importing.md) and
   [configuration.md](configuration.md). (XLS export deferred to a later milestone.)
 
-- **M6 — Rich metadata & playback**
-  Cover art, financials, reviews; open-in-video-player; local video-file metadata.
+- **M6 — Rich metadata & playback** *(current)*
+  Financials (budget + gross) scraped from BoxOfficeMojo; local video-file
+  metadata (size/resolution/framerate/bitrate/codec + audio & subtitle tracks) via
+  MediaInfo (`pfdb scan`); cover art fetched from IMDb/FilmAffinity and stored as a
+  blob (`--cover`, `pfdb cover`); open-in-player (`pfdb play`). Reviews remain
+  deferred (FA's review count is kept). See
+  [sources/boxofficemojo.md](sources/boxofficemojo.md) and
+  [video-metadata.md](video-metadata.md).
 
 - **M7 — Dear ImGui GUI**
   The graphical front-end. Interface spec provided at that point.

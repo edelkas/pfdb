@@ -1,28 +1,12 @@
 #pragma once
 
-#include <cstdint>
 #include <optional>
 #include <string>
 
 #include "pfdb/types.hpp"
+#include "pfdb/video_file.hpp"  // VideoFileInfo (kept here for source compatibility)
 
 namespace pfdb {
-
-/// Metadata about the local video file backing a film, when the user has one.
-/// All fields are optional because a film may have no file, or only partial
-/// information may be known.
-struct VideoFileInfo {
-    /// Absolute or user-relative path to the video file.
-    std::string path;
-    std::optional<std::int64_t> size_bytes;
-    std::optional<int> duration_seconds;
-    std::optional<int> width;
-    std::optional<int> height;
-    /// Container/codec description, e.g. "mkv/h265".
-    std::string codec;
-
-    friend bool operator==(const VideoFileInfo&, const VideoFileInfo&) = default;
-};
 
 /// User-specific data that is not part of any external source: how *this*
 /// user relates to the film.

@@ -23,6 +23,7 @@ cast/crew). See [../../src/app/enrichment.cpp](../../src/app/enrichment.cpp).
 | `review_count` | número de críticas |
 | `topics` | "temas" (finer than genres) |
 | `groups` | groups / sagas |
+| cover art | the poster URL from `meta[property="og:image"]` (used by `--cover`) |
 | relations, similarities | the edge pages/section below |
 
 ## Endpoints & selectors

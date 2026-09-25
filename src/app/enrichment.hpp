@@ -12,10 +12,12 @@ namespace pfdb::app {
 /// field policy: IMDb wins every shared field (title, original_title, year,
 /// runtime, synopsis, genres, credits); FilmAffinity contributes only its
 /// specialties (spanish_title/synopsis, review_count, topics, groups) and its
-/// rating (kept alongside IMDb's). source_refs from both are unioned. Either
-/// argument may be empty; with only one source, that film passes through. This
-/// is M3's two-source merge; a general N-source merge with provenance is later.
-Film merge_films(const std::optional<Film>& imdb, const std::optional<Film>& fa);
+/// rating (kept alongside IMDb's). source_refs from all sources are unioned.
+/// `bom` (BoxOfficeMojo) contributes only budget/gross. Any argument may be
+/// empty; with a single source, that film passes through. A general N-source
+/// merge with provenance is later.
+Film merge_films(const std::optional<Film>& imdb, const std::optional<Film>& fa,
+                 const std::optional<Film>& bom = std::nullopt);
 
 /// User-supplied data layered on top of a fetched film. These are the manual
 /// flags of `pfdb add` (favourite, date watched, ...) that a source can't know.

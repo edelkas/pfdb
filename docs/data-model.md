@@ -8,9 +8,11 @@ All domain types live in `include/pfdb/` and are plain values with `==`.
   synopsis, genres), `credits`, `ratings`, `source_refs`, embedded `UserData`,
   an optional `VideoFileInfo`, and bookkeeping timestamps. FilmAffinity adds
   `spanish_title`, `spanish_synopsis`, `review_count`, and the tag-style lists
-  `topics` (finer than genres) and `groups` (sagas). Film-to-film **relations**
-  and **similarities** are edges between collection films, stored in their own
-  tables rather than on `Film`.
+  `topics` (finer than genres) and `groups` (sagas). BoxOfficeMojo adds `budget`
+  and `gross`. Film-to-film **relations** and **similarities** are edges between
+  collection films, stored in their own tables rather than on `Film`. Cover art
+  is stored per-film as a blob but **not** on `Film` (so it never loads into the
+  in-memory model) — it's reached through the repository.
 - **`Person`** / **`Credit`** — a person and their contribution to a film
   (`CreditRole` = Director, Writer, Actor, …), with character and billing order.
   A loaded `Credit` carries its person's stored id, which is what the query
@@ -22,7 +24,10 @@ All domain types live in `include/pfdb/` and are plain values with `==`.
   may carry several — this is what lets PFDB combine sources.
 - **`UserData`** — the user's own data: date watched, personal rating, notes,
   favourite flag, watch count, and owned / wish-list flags.
-- **`VideoFileInfo`** — metadata about a local video file, all optional.
+- **`VideoFileInfo`** — metadata about a local video file (path, size, duration,
+  resolution, frame rate, bitrate, codec) plus lists of `AudioTrack` and
+  `SubtitleTrack`, filled by a MediaInfo probe (`pfdb scan`). See
+  [video-metadata.md](video-metadata.md).
 
 ### Conventions
 
@@ -44,7 +49,9 @@ films(id PK, title, original_title, year?, runtime_minutes?, synopsis,
       -- v2 additions:
       spanish_title, spanish_synopsis, review_count?,
       -- v3 additions:
-      watch_count, owned, wishlist)
+      watch_count, owned, wishlist,
+      -- v4 additions (financials, USD):
+      budget?, gross?)
 
 genres(film_id → films, genre, ord)
 people(id PK, name UNIQUE)
@@ -52,13 +59,21 @@ credits(film_id → films, person_id → people, role, character, ord)
 ratings(film_id → films, source, value, scale, votes?)
 source_refs(film_id → films, source, external_id, fetched_at?)
 video_files(film_id PK → films, path, size_bytes?, duration_seconds?,
-            width?, height?, codec)
+            width?, height?, codec,
+            -- v4 additions:
+            framerate?, video_bitrate?)
 
 -- v2
 topics(film_id → films, topic, ord)            -- FA temas, like genres
 movie_groups(film_id → films, name, ord)       -- FA groups/sagas, like genres
 relations(from_id → films, to_id → films, kind, PK(from_id,to_id))    -- directed
 similarities(a_id → films, b_id → films, percent, PK(a_id,b_id))      -- a_id<b_id
+
+-- v4
+audio_tracks(film_id → films, ord, name, language, size_bytes?, codec,
+             bitrate?, channels?, sample_rate?)
+subtitle_tracks(film_id → films, ord, name, language, size_bytes?, format)
+covers(film_id PK → films, mime, image BLOB)   -- kept out of the in-memory model
 ```
 
 `?` marks nullable columns (they map to `std::optional` fields). All child tables

@@ -44,6 +44,9 @@ struct SourceFetch {
     Film film;
     std::vector<RelatedRef> relations;
     std::vector<SimilarRef> similars;
+    /// URL of the film's cover/poster image, when the source exposes one. The app
+    /// downloads and stores it (as a blob) only when the user asks for a cover.
+    std::string cover_url;
 };
 
 /// Raised by sources on failure. `kind` lets the CLI map to an exit code and

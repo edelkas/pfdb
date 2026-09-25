@@ -44,7 +44,22 @@ struct AddArgs {
     // Both may be given together to combine sources (IMDb wins shared fields).
     std::optional<std::string> imdb_id;  // --imdb <ttID>
     std::optional<std::string> fa_id;    // --fa <faId>
+    bool financials = false;             // --financials: also fetch BoxOfficeMojo
+    bool cover = false;                  // --cover: download & store cover art
     bool dry_run = false;                // fetch/build but do not save
+};
+
+/// Fields accepted by `pfdb scan` (MediaInfo probe of a local file).
+struct ScanArgs {
+    Id id = kInvalidId;
+    std::string file;  // --file <path>; when empty, the film's stored path is used
+};
+
+/// Fields accepted by `pfdb cover`.
+struct CoverArgs {
+    Id id = kInvalidId;
+    std::string out;  // --out <file>: export the stored cover
+    std::string set;  // --set <file>: set the cover from a local file
 };
 
 /// Fields accepted by `pfdb update`.
@@ -94,5 +109,8 @@ int cmd_search(const GlobalOptions& opts, const SearchArgs& args);
 int cmd_update(const GlobalOptions& opts, const UpdateArgs& args);
 int cmd_import(const GlobalOptions& opts, const ImportArgs& args);
 int cmd_preset(const GlobalOptions& opts, const PresetArgs& args);
+int cmd_scan(const GlobalOptions& opts, const ScanArgs& args);
+int cmd_cover(const GlobalOptions& opts, const CoverArgs& args);
+int cmd_play(const GlobalOptions& opts, Id id);
 
 }  // namespace pfdb::cli

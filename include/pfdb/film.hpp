@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
@@ -33,6 +34,10 @@ struct Film {
     std::optional<int> runtime_minutes;
     std::string synopsis;
     std::vector<std::string> genres;
+
+    // --- Financials (USD; scraped from BoxOfficeMojo) ---
+    std::optional<std::int64_t> budget;
+    std::optional<std::int64_t> gross;  ///< Worldwide total gross.
 
     // --- Localized (FilmAffinity) metadata ---
     /// Spanish title, when a source (FilmAffinity) provides one.

@@ -162,6 +162,11 @@ FilmParse parse_film(std::string_view html) {
         result.similars.push_back(SimilarRef{*id, *pct});
     }
 
+    // Poster image.
+    if (auto og = doc.select_first(R"(meta[property="og:image"])")) {
+        result.cover_url = og->attr("content").value_or("");
+    }
+
     SourceRef ref;
     ref.source = kSourceId;
     ref.external_id = "";  // filled by the source (it knows the requested id)

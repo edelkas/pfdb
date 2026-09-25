@@ -54,6 +54,9 @@ int main(int argc, char** argv) {
                     "Your personal rating (0-10)");
     add->add_option("--notes", add_args.notes, "Free-form notes");
     add->add_flag("--favorite", add_args.favorite, "Mark as a favourite");
+    add->add_flag("--financials", add_args.financials,
+                  "Also fetch budget/gross from BoxOfficeMojo (needs --imdb)");
+    add->add_flag("--cover", add_args.cover, "Download and store cover art");
     add->add_flag("--dry-run", add_args.dry_run,
                   "Fetch/build the film and print it, but do not save");
 
@@ -112,13 +115,33 @@ int main(int argc, char** argv) {
     auto* preset_remove = preset->add_subcommand("remove", "Remove a user preset");
     preset_remove->add_option("name", preset_args.name, "Preset name")->required();
 
+    // --- scan ---
+    ScanArgs scan_args;
+    auto* scan = app.add_subcommand("scan", "Read local video-file metadata (MediaInfo)");
+    scan->add_option("id", scan_args.id, "Film id to scan")->required();
+    scan->add_option("--file", scan_args.file,
+                     "Path to the video file (defaults to the film's stored path)");
+
+    // --- cover ---
+    CoverArgs cover_args;
+    auto* cover = app.add_subcommand("cover", "Export or set a film's cover art");
+    cover->add_option("id", cover_args.id, "Film id")->required();
+    cover->add_option("--out", cover_args.out, "Write the stored cover to this file");
+    cover->add_option("--set", cover_args.set, "Set the cover from this local image file");
+
+    // --- play ---
+    pfdb::Id play_id = pfdb::kInvalidId;
+    auto* play = app.add_subcommand("play", "Open a film's video file in the default player");
+    play->add_option("id", play_id, "Film id to play")->required();
+
     // --- remove ---
     pfdb::Id remove_id = pfdb::kInvalidId;
     auto* remove = app.add_subcommand("remove", "Remove a film by id");
     remove->add_option("id", remove_id, "Film id to remove")->required();
 
     // Let global options given after the subcommand fall through to the parent.
-    for (auto* sub : std::array{init, add, search, update, list, import, remove}) {
+    for (auto* sub :
+         std::array{init, add, search, update, list, import, scan, cover, play, remove}) {
         sub->fallthrough();
     }
 
@@ -153,6 +176,15 @@ int main(int argc, char** argv) {
             preset_args.action = PresetArgs::Action::List;
         }
         return cmd_preset(gopts, preset_args);
+    }
+    if (scan->parsed()) {
+        return cmd_scan(gopts, scan_args);
+    }
+    if (cover->parsed()) {
+        return cmd_cover(gopts, cover_args);
+    }
+    if (play->parsed()) {
+        return cmd_play(gopts, play_id);
     }
     if (remove->parsed()) {
         return cmd_remove(gopts, remove_id);

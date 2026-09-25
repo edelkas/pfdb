@@ -25,6 +25,8 @@ const std::vector<FieldInfo>& registry() {
         {"review_count", FieldKind::Number},
         {"imdb_rating", FieldKind::Number},
         {"fa_rating", FieldKind::Number},
+        {"budget", FieldKind::Number},
+        {"gross", FieldKind::Number},
         // Date
         {"date_watched", FieldKind::Date},
         // String lists (exact membership)
@@ -158,6 +160,14 @@ std::optional<double> extract_number(std::string_view field, const Film& film) {
     }
     if (field == "imdb_rating") return source_rating(film, "imdb");
     if (field == "fa_rating") return source_rating(film, "filmaffinity");
+    if (field == "budget") {
+        return film.budget.has_value() ? std::optional<double>(static_cast<double>(*film.budget))
+                                       : std::nullopt;
+    }
+    if (field == "gross") {
+        return film.gross.has_value() ? std::optional<double>(static_cast<double>(*film.gross))
+                                      : std::nullopt;
+    }
     return std::nullopt;
 }
 

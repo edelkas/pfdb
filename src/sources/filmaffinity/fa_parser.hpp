@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -13,6 +14,7 @@ namespace pfdb::sources::filmaffinity {
 struct FilmParse {
     Film film;
     std::vector<SimilarRef> similars;
+    std::string cover_url;  ///< Poster URL (og:image), or "" if absent.
 };
 
 /// Parse a FilmAffinity search results page into candidate titles.

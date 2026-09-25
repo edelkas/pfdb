@@ -64,6 +64,14 @@ std::string build_title_query(std::string_view id) {
     return q;
 }
 
+// Cap an IMDb/Amazon image URL to ~640px wide so stored covers stay small.
+std::string cap_image_width(std::string url) {
+    if (const auto pos = url.find("._V1_"); pos != std::string::npos) {
+        url = url.substr(0, pos) + "._V1_SX640.jpg";
+    }
+    return url;
+}
+
 }  // namespace
 
 bool is_valid_title_id(std::string_view id) {
@@ -111,8 +119,10 @@ SourceFetch ImdbSource::fetch(std::string_view external_id) {
             ref.fetched_at = now_unix();
         }
     }
-    // IMDb exposes no relation/similarity edges here.
-    return SourceFetch{std::move(film), {}, {}};
+    // IMDb exposes no relation/similarity edges here, but does have a cover.
+    SourceFetch out{std::move(film), {}, {}, {}};
+    out.cover_url = cap_image_width(parse_primary_image(resp.body));
+    return out;
 }
 
 }  // namespace pfdb::sources::imdb

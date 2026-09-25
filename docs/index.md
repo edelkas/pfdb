@@ -10,6 +10,7 @@ collection manager aimed at power users.
 - **[CLI reference](cli.md)** — every command and option.
 - **[Querying](querying.md)** — filters, boolean expressions, and sorting for `pfdb list`.
 - **[Importing](importing.md)** — importing a collection from EMDB, with field selection.
+- **[Video metadata](video-metadata.md)** — indexing local files with MediaInfo, and playback.
 - **[Configuration](configuration.md)** — the user config file and field presets.
 - **[Testing & fixtures](testing.md)** — how tests are organized and how to keep
   scraping parsers honest with saved fixtures.
@@ -35,8 +36,9 @@ cmake --build build/windows-msvc
 ctest --preset windows-msvc      # run the test suite
 ```
 
-Dependencies (SQLite, CLI11, spdlog, nlohmann-json, Catch2) are declared in
-`vcpkg.json` and built on first configure. The build produces:
+Dependencies (SQLite, CLI11, spdlog, nlohmann-json, cpr, lexbor, libmediainfo,
+Catch2) are declared in `vcpkg.json` and built on first configure. The build
+produces:
 
 - `build/<preset>/src/pfdb.exe` — the CLI.
 - `build/<preset>/tests/pfdb_tests.exe` — the test runner.
