@@ -5,7 +5,7 @@ never depends on any specific website.
 
 ```
 +-----------------------------------------------------------+
-|  Frontends:  CLI (now)          →  ImGui GUI (later)       |
+|  Frontends:  CLI (pfdb)         +  ImGui GUI (pfdb-gui)    |
 +-----------------------------------------------------------+
 |  Application / Services                                    |
 |   - Collection (in-memory model + query engine)           |
@@ -42,6 +42,8 @@ never depends on any specific website.
 | `src/io/` | `pfdb` | Serialization (JSON, CSV export), the import/export `FieldSet`, and the EMDB reader (`io/emdb/`: decode → parse → map). |
 | `src/app/` (config) | `pfdb::config` | `Config`: user-level JSON config holding field presets. |
 | `src/cli/` | `pfdb::cli` | CLI11 front-end. |
+| `src/gui/` | `pfdb::gui` | Dear ImGui (GLFW + OpenGL3) front-end — a thin presentation layer over the same services; background-threaded network ops. |
+| `third_party/` | — | Vendored Dear ImGui (trimmed) and stb_image, built as the `imgui` lib. |
 
 ## Key decisions
 

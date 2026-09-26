@@ -78,3 +78,34 @@ target_link_libraries(pfdb_cli
         spdlog::spdlog
         pfdb_warnings
 )
+
+# ---------------------------------------------------------------------------
+# pfdb_gui: the Dear ImGui (GLFW + OpenGL3) front-end.
+# ---------------------------------------------------------------------------
+add_executable(pfdb_gui
+    gui/main_gui.cpp
+    gui/app.cpp
+    gui/texture.cpp
+    gui/columns.cpp
+    gui/table_view.cpp
+    gui/detail_view.cpp
+    gui/add_modal.cpp
+    gui/filter_modal.cpp
+)
+
+set_target_properties(pfdb_gui PROPERTIES OUTPUT_NAME pfdb-gui)
+
+target_include_directories(pfdb_gui PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/third_party/stb
+)
+
+target_link_libraries(pfdb_gui
+    PRIVATE
+        pfdb_core
+        imgui
+        glfw
+        OpenGL::GL
+        spdlog::spdlog
+        pfdb_warnings
+)

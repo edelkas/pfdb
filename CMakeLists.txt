@@ -55,9 +55,16 @@ find_package(cpr CONFIG REQUIRED)
 find_package(lexbor CONFIG REQUIRED)
 find_package(zenlib CONFIG REQUIRED)
 find_package(mediainfolib CONFIG REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(OpenGL REQUIRED)
 
 # ---------------------------------------------------------------------------
-# Core library.
+# Vendored third-party libraries (Dear ImGui, ...).
+# ---------------------------------------------------------------------------
+add_subdirectory(third_party)
+
+# ---------------------------------------------------------------------------
+# Core library + front-ends.
 # ---------------------------------------------------------------------------
 add_subdirectory(src)
 

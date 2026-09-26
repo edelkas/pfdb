@@ -8,6 +8,7 @@ collection manager aimed at power users.
 - **[Architecture](architecture.md)** — the layered design and how the pieces fit.
 - **[Data model & schema](data-model.md)** — the domain types and the SQLite schema.
 - **[CLI reference](cli.md)** — every command and option.
+- **[GUI](gui.md)** — the Dear ImGui graphical front-end (`pfdb-gui`).
 - **[Querying](querying.md)** — filters, boolean expressions, and sorting for `pfdb list`.
 - **[Importing](importing.md)** — importing a collection from EMDB, with field selection.
 - **[Video metadata](video-metadata.md)** — indexing local files with MediaInfo, and playback.
@@ -37,10 +38,12 @@ ctest --preset windows-msvc      # run the test suite
 ```
 
 Dependencies (SQLite, CLI11, spdlog, nlohmann-json, cpr, lexbor, libmediainfo,
-Catch2) are declared in `vcpkg.json` and built on first configure. The build
-produces:
+glfw3, Catch2) are declared in `vcpkg.json` and built on first configure; OpenGL
+is the system library. Dear ImGui and stb_image are vendored under
+`third_party/`. The build produces:
 
 - `build/<preset>/src/pfdb.exe` — the CLI.
+- `build/<preset>/src/pfdb-gui.exe` — the graphical front-end (see [gui.md](gui.md)).
 - `build/<preset>/tests/pfdb_tests.exe` — the test runner.
 
 ## Design principles

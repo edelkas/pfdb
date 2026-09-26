@@ -46,8 +46,15 @@ begins. Later milestones are re-planned in detail as they're reached.
   [sources/boxofficemojo.md](sources/boxofficemojo.md) and
   [video-metadata.md](video-metadata.md).
 
-- **M7 — Dear ImGui GUI**
-  The graphical front-end. Interface spec provided at that point.
+- **M7 — Dear ImGui GUI** *(current)*
+  The graphical front-end `pfdb-gui` (Dear ImGui on GLFW + OpenGL3): fullscreen
+  window with a movable splitter between a filterable/sortable **table** (with a
+  clipper for large collections and a column chooser) and a **detail panel**
+  (cover art, clickable director/genre/year filters, and update/edit/remove/
+  mark-seen/play actions), a toolbar (add / settings / about / layout / theme),
+  and an **Add** flow that searches each source in tabs and merges the picks.
+  Background-threaded networking. See [gui.md](gui.md). (First draft; country
+  column deferred.)
 
 - **M8 — Packaging & auto-update**
   GitHub Releases packaging and self-update from within the app.
