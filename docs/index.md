@@ -13,6 +13,7 @@ collection manager aimed at power users.
 - **[Importing](importing.md)** — importing a collection from EMDB, with field selection.
 - **[Video metadata](video-metadata.md)** — indexing local files with MediaInfo, and playback.
 - **[Configuration](configuration.md)** — the user config file and field presets.
+- **[Updating & packaging](updating.md)** — self-update from GitHub Releases, and how releases are cut.
 - **[Testing & fixtures](testing.md)** — how tests are organized and how to keep
   scraping parsers honest with saved fixtures.
 - **[Roadmap](roadmap.md)** — milestones from the CLI foundation to the GUI.
@@ -39,8 +40,8 @@ ctest --preset windows-msvc      # run the test suite
 
 Dependencies (SQLite, CLI11, spdlog, nlohmann-json, cpr, lexbor, libmediainfo,
 glfw3, Catch2) are declared in `vcpkg.json` and built on first configure; OpenGL
-is the system library. Dear ImGui and stb_image are vendored under
-`third_party/`. The build produces:
+is the system library. Dear ImGui, stb_image, and miniz (zip extraction for the
+self-updater) are vendored under `third_party/`. The build produces:
 
 - `build/<preset>/src/pfdb.exe` — the CLI.
 - `build/<preset>/src/pfdb-gui.exe` — the graphical front-end (see [gui.md](gui.md)).

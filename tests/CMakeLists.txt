@@ -31,6 +31,10 @@ add_executable(pfdb_tests
     unit/test_bom_source.cpp
     unit/test_bom_live.cpp
     unit/test_mediainfo.cpp
+    unit/test_semver.cpp
+    unit/test_sha256.cpp
+    unit/test_update.cpp
+    unit/test_zip.cpp
 )
 
 # Tests reach into the internal headers under src/ (Repository, CollectionModel,

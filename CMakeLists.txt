@@ -15,11 +15,14 @@ cmake_minimum_required(VERSION 3.25)
 project(pfdb
     VERSION 0.1.0
     DESCRIPTION "Power Film DataBase - a power-user film collection manager"
-    LANGUAGES CXX)
+    LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Build date, injected into the code (shown in the GUI's About dialog).
+string(TIMESTAMP PFDB_BUILD_DATE "%Y-%m-%d" UTC)
 
 # Export compile_commands.json for clang-tidy / editors.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

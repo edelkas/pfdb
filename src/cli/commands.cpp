@@ -1,6 +1,9 @@
 #include "cli/commands.hpp"
 
+#include <chrono>
+#include <ctime>
 #include <exception>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -13,7 +16,10 @@
 #include "app/cover.hpp"
 #include "app/enrichment.hpp"
 #include "app/import.hpp"
+#include "app/platform.hpp"
 #include "app/player.hpp"
+#include "app/update.hpp"
+#include "app/version.hpp"
 #include "db/repository.hpp"
 #include "io/csv.hpp"
 #include "io/field_set.hpp"
@@ -789,6 +795,153 @@ int cmd_play(const GlobalOptions& opts, Id id) {
     }
     std::cout << "Opening " << film->video->path << " ...\n";
     return kOk;
+}
+
+namespace {
+
+/// Directory holding the running executable (where the swap happens).
+std::string install_dir() {
+    const std::string exe = app::current_executable_path();
+    if (exe.empty()) {
+        return ".";
+    }
+    return std::filesystem::path(exe).parent_path().string();
+}
+
+std::int64_t now_unix() { return static_cast<std::int64_t>(std::time(nullptr)); }
+
+}  // namespace
+
+void run_startup_update_hooks(const GlobalOptions& opts) {
+    config::Config cfg;
+    try {
+        cfg = load_config(opts);
+    } catch (const std::exception&) {
+        return;  // a broken config must never break the CLI
+    }
+
+    // 1. Finalize a just-applied update (surface notes/error, clean up .old).
+    const std::string dir = install_dir();
+    const app::FinalizeResult fin = app::finalize_update(cfg, dir);
+    if (!fin.error.empty()) {
+        std::cerr << "pfdb update: " << fin.error << '\n';
+    } else if (fin.updated) {
+        std::cerr << "pfdb was updated to " << app::current_version().str() << ".\n";
+        if (!fin.notes.empty()) {
+            std::cerr << fin.notes << '\n';
+        }
+    }
+
+    // 2. Interval-based, notify-only check.
+    if (cfg.update_check_due(now_unix())) {
+        net::CprHttpClient http(5000);  // short timeout so scripting stays fast
+        if (auto m = app::fetch_manifest(http, cfg.update().repo)) {
+            if (app::is_newer(*m, app::current_version())) {
+                std::cerr << "A new version " << m->version_str
+                          << " is available - run 'pfdb upgrade'.\n";
+            }
+        }
+        cfg.mark_update_checked(now_unix());
+        try {
+            cfg.save();
+        } catch (const std::exception&) {
+            // ignore: a read-only config must not break the command
+        }
+    }
+}
+
+int cmd_upgrade(const GlobalOptions& opts, const UpgradeArgs& args) {
+    config::Config cfg;
+    try {
+        cfg = load_config(opts);
+    } catch (const std::exception& e) {
+        std::cerr << "error: " << e.what() << '\n';
+        return kRuntimeError;
+    }
+
+    // `--interval N` sets the cadence and returns (a config-only operation).
+    if (args.interval.has_value()) {
+        cfg.update().check_interval_hours = *args.interval;
+        try {
+            cfg.save();
+        } catch (const std::exception& e) {
+            std::cerr << "error: " << e.what() << '\n';
+            return kRuntimeError;
+        }
+        if (*args.interval <= 0) {
+            std::cout << "Automatic update checks disabled.\n";
+        } else {
+            std::cout << "Update check interval set to " << *args.interval
+                      << " hour(s).\n";
+        }
+        return kOk;
+    }
+
+    const app::SemVer current = app::current_version();
+    const std::string dir = install_dir();
+    const std::string staging = app::default_staging_dir(dir);
+    net::CprHttpClient http(120000);  // generous timeout for the archive download
+
+    app::PrepareResult res = app::prepare_update(http, cfg.update().repo, current,
+                                                 staging, /*download=*/!args.check_only);
+
+    cfg.mark_update_checked(now_unix());
+    try {
+        cfg.save();
+    } catch (const std::exception&) {
+        // non-fatal
+    }
+
+    if (!res.error.empty()) {
+        std::cerr << "error: " << res.error << '\n';
+        return kRuntimeError;
+    }
+    if (res.up_to_date) {
+        std::cout << "pfdb is up to date (" << current.str() << ").\n";
+        return kOk;
+    }
+
+    std::cout << "Update available: " << res.available_version << " (current "
+              << current.str() << ").\n";
+    if (!res.notes.empty()) {
+        std::cout << "\n" << res.notes << "\n\n";
+    }
+    if (args.check_only) {
+        return kOk;
+    }
+    if (!res.prepared) {
+        std::cerr << "error: update could not be prepared\n";
+        return kRuntimeError;
+    }
+
+    if (!args.yes) {
+        std::cout << "Download verified. Install and restart pfdb now? [y/N] "
+                  << std::flush;
+        std::string line;
+        if (!std::getline(std::cin, line) || (line != "y" && line != "Y")) {
+            std::cout << "Update cancelled.\n";
+            return kOk;
+        }
+    }
+
+    if (!app::launch_swapper(*res.prepared, dir, cfg.path(), app::Relaunch::Cli)) {
+        std::cerr << "error: could not launch the update installer\n";
+        return kRuntimeError;
+    }
+    std::cout << "Installing update; pfdb will restart...\n";
+    return kOk;  // exit so the swapper (waiting on our pid) can proceed
+}
+
+int cmd_apply_update(const ApplyUpdateArgs& args) {
+    app::SwapParams p;
+    p.from_dir = args.from;
+    p.to_dir = args.to;
+    p.wait_pid = args.wait_pid;
+    p.relaunch = args.relaunch;
+    p.version = args.version;
+    p.notes_file = args.notes_file;
+    p.config_path = args.config_path;
+    return app::run_swapper(p);
 }
 
 }  // namespace pfdb::cli

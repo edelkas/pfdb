@@ -11,7 +11,7 @@ never depends on any specific website.
 |   - Collection (in-memory model + query engine)           |
 |   - Enrichment (orchestrates source fetch + merge)        |
 |   - Import/Export (emdb, CSV/XLS)                          |
-|   - Update (GitHub Releases self-update)         [later]   |
+|   - Update (GitHub Releases self-update)                   |
 +-----------------------------------------------------------+
 |  Domain model:  Film, Person, Credit, Rating, SourceRef,  |
 |                 UserData, VideoFileInfo                    |
@@ -38,12 +38,13 @@ never depends on any specific website.
 | `src/parse/` | `pfdb::parse` | `HtmlDocument`: a lexbor-backed HTML/CSS-selector wrapper for HTML sources. |
 | `src/sources/` | `pfdb::sources` | `ISource` plugin interface, registry, and the IMDb (JSON) + FilmAffinity (HTML) + BoxOfficeMojo (HTML, financials) sources — each a fetcher plus pure parsers. |
 | `src/media/` | `pfdb::media` | `probe()`: local video-file metadata via MediaInfo (libmediainfo). |
-| `src/app/` | `pfdb::app` | Enrichment (two-source merge; layering user data) and import orchestration (`import_emdb`, upsert by IMDb id). |
-| `src/io/` | `pfdb` | Serialization (JSON, CSV export), the import/export `FieldSet`, and the EMDB reader (`io/emdb/`: decode → parse → map). |
-| `src/app/` (config) | `pfdb::config` | `Config`: user-level JSON config holding field presets. |
+| `src/app/` | `pfdb::app` | Enrichment (two-source merge; layering user data), import orchestration (`import_emdb`), and the self-update service (`update`, `version`/SemVer, `platform` exec/fs shim). |
+| `src/io/` | `pfdb` | Serialization (JSON, CSV export), the import/export `FieldSet`, the EMDB reader (`io/emdb/`: decode → parse → map), and zip extraction (`io/zip`, via miniz). |
+| `src/util/` | `pfdb::util` | Small dependency-free helpers (e.g. `sha256` for update integrity). |
+| `src/app/` (config) | `pfdb::config` | `Config`: user-level JSON config holding field presets and update settings. |
 | `src/cli/` | `pfdb::cli` | CLI11 front-end. |
 | `src/gui/` | `pfdb::gui` | Dear ImGui (GLFW + OpenGL3) front-end — a thin presentation layer over the same services; background-threaded network ops. |
-| `third_party/` | — | Vendored Dear ImGui (trimmed) and stb_image, built as the `imgui` lib. |
+| `third_party/` | — | Vendored Dear ImGui (trimmed) + stb_image (the `imgui` lib) and miniz (the `miniz` lib, zip extraction for the updater). |
 
 ## Key decisions
 
@@ -93,6 +94,6 @@ and never touches SQL or the network. Fields are defined in one registry
 
 - **Enrichment** will take a source id (e.g. IMDb `tt…`), fetch and parse it into
   a partial `Film`, and merge across sources with per-field provenance.
-- **Update** will check GitHub Releases and self-replace the binary.
 
-Both get their own design docs when implemented.
+The **Update** service (self-replace from GitHub Releases) is implemented; see
+[updating.md](updating.md).

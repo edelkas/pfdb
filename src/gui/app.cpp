@@ -1,12 +1,17 @@
 #include "gui/app.hpp"
 
 #include <ctime>
+#include <filesystem>
 #include <string>
 #include <utility>
 
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 
+#include <GLFW/glfw3.h>
+
+#include "app/platform.hpp"
+#include "app/version.hpp"
 #include "query/parser.hpp"  // query::QueryError
 
 namespace pfdb::gui {
@@ -94,6 +99,22 @@ App::App(std::string db_path, std::string config_path)
       config_(config::Config::load(config_path)) {
     apply_theme();
     refresh();
+
+    // Finalize a just-applied update: surface its notes/error once, clean up.
+    const std::string exe = app::current_executable_path();
+    const std::string dir =
+        exe.empty() ? "." : std::filesystem::path(exe).parent_path().string();
+    const app::FinalizeResult fin = app::finalize_update(config_, dir);
+    if (!fin.error.empty()) {
+        app_update_.show_result = true;
+        app_update_.result_ok = false;
+        app_update_.result_text = fin.error;
+    } else if (fin.updated) {
+        app_update_.show_result = true;
+        app_update_.result_ok = true;
+        app_update_.result_text = "Updated to " + app::current_version().str() +
+                                  (fin.notes.empty() ? "" : "\n\n" + fin.notes);
+    }
 }
 
 void App::apply_theme() {
@@ -208,6 +229,7 @@ void App::poll_jobs() {
             diff_.open = true;
         }
     }
+    poll_update_jobs();
 }
 
 void App::draw_toolbar() {
@@ -234,7 +256,22 @@ void App::draw_toolbar() {
         apply_theme();
     }
     ImGui::SameLine();
+    const bool checking = update_check_job_.running() || app_update_.applying;
+    ImGui::BeginDisabled(checking);
+    if (ImGui::Button(app_update_.available ? "Update available!" : "Check for updates")) {
+        if (app_update_.available) {
+            app_update_.show_available = true;
+        } else {
+            start_update_check();
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
     ImGui::TextDisabled("%zu / %zu films", results_.size(), model_.size());
+    if (!app_update_.status.empty()) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("  %s", app_update_.status.c_str());
+    }
     if (!toast_.empty()) {
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.4F, 0.8F, 0.4F, 1.0F), "  %s", toast_.c_str());
@@ -305,6 +342,38 @@ void App::draw_settings_modal() {
             layout_ = horizontal ? Layout::Horizontal : Layout::Vertical;
         }
         ImGui::Separator();
+        ImGui::TextDisabled("Updates");
+        int interval = config_.update().check_interval_hours;
+        if (ImGui::InputInt("Check every (hours, 0 = off)", &interval)) {
+            if (interval < 0) {
+                interval = 0;
+            }
+            config_.update().check_interval_hours = interval;
+            try {
+                config_.save();
+            } catch (const std::exception&) {
+                // ignore a read-only config
+            }
+        }
+        if (config_.update().last_check > 0) {
+            const std::time_t t = config_.update().last_check;
+            std::tm tm{};
+#ifdef _WIN32
+            localtime_s(&tm, &t);
+#else
+            localtime_r(&t, &tm);
+#endif
+            char buf[32];
+            std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M", &tm);
+            ImGui::TextDisabled("Last checked: %s", buf);
+        } else {
+            ImGui::TextDisabled("Last checked: never");
+        }
+        if (ImGui::Button("Check now")) {
+            start_update_check();
+            show_settings_ = false;
+        }
+        ImGui::Separator();
         ImGui::TextDisabled("Field presets (from config)");
         for (const auto& [name, tokens] : config_.presets()) {
             ImGui::BulletText("%s", name.c_str());
@@ -328,7 +397,11 @@ void App::draw_about_modal() {
 #ifdef PFDB_VERSION
         ImGui::Text("Version %s", PFDB_VERSION);
 #endif
-        ImGui::Text("Dear ImGui %s", ImGui::GetVersion());
+#ifdef PFDB_BUILD_DATE
+        ImGui::Text("Built %s", PFDB_BUILD_DATE);
+#endif
+        ImGui::Text("Dear ImGui %s  |  GLFW %s", ImGui::GetVersion(),
+                    glfwGetVersionString());
         ImGui::Separator();
         ImGui::TextWrapped(
             "A power-user film collection manager. Data is scraped from IMDb, "
@@ -351,6 +424,7 @@ void App::frame() {
         ImGuiWindowFlags_NoNavFocus;
 
     ImGui::Begin("PFDB", nullptr, flags);
+    maybe_auto_check();
     poll_jobs();
     draw_toolbar();
     ImGui::Separator();
@@ -364,6 +438,7 @@ void App::frame() {
     draw_about_modal();
     draw_diff_modal();
     draw_edit_modal();
+    draw_update_modals();
 }
 
 }  // namespace pfdb::gui

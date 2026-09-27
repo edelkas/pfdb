@@ -19,7 +19,8 @@ splitter is horizontal (table on top) by default; the toolbar's layout button
 switches to a vertical splitter (table on the left). The theme button toggles
 ImGui's dark/light styles.
 
-Toolbar buttons: **Add movie**, **Settings**, **About**, **Layout**, **Theme**.
+Toolbar buttons: **Add movie**, **Settings**, **About**, **Layout**, **Theme**,
+and **Check for updates**.
 
 ## Table panel
 
@@ -58,6 +59,17 @@ The **Add** modal takes a search query and checkboxes for which sources to searc
 appear in **per-source tabs** (title / year / cast). Pick the right entry in each
 tab and **Add selected** fetches and merges them (per the IMDb-wins policy),
 pulling financials from BoxOfficeMojo and the cover when requested.
+
+## Updates
+
+**Check for updates** runs the check on a background thread; if a newer release
+exists the button becomes **Update available!** and opens a dialog with the
+version and notes. **Update now** downloads and verifies in the background, then
+hands off to the installer and relaunches — the app closes itself so the swap can
+complete. A throttled auto-check also runs on launch (cadence in **Settings**,
+default daily). The **About** dialog shows the version and build date; the first
+launch after a successful update shows the release notes (or an error) once. The
+full mechanism is in [updating.md](updating.md).
 
 ## Notes
 

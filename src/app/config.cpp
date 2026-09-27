@@ -80,7 +80,29 @@ Config Config::load(const std::string& path) {
             cfg.presets_[name] = std::move(tokens);
         }
     }
+    if (auto it = j.find("update"); it != j.end() && it->is_object()) {
+        const nlohmann::json& u = *it;
+        UpdateSettings& us = cfg.update_;
+        us.check_interval_hours = u.value("check_interval_hours", us.check_interval_hours);
+        us.last_check = u.value("last_check", us.last_check);
+        us.last_run_version = u.value("last_run_version", us.last_run_version);
+        us.pending_version = u.value("pending_version", us.pending_version);
+        us.pending_notes = u.value("pending_notes", us.pending_notes);
+        us.pending_error = u.value("pending_error", us.pending_error);
+        us.repo = u.value("repo", us.repo);
+    }
     return cfg;
+}
+
+bool Config::update_check_due(std::int64_t now) const {
+    if (update_.check_interval_hours <= 0) {
+        return false;
+    }
+    if (update_.last_check == 0) {
+        return true;
+    }
+    const std::int64_t interval = static_cast<std::int64_t>(update_.check_interval_hours) * 3600;
+    return now - update_.last_check >= interval;
 }
 
 std::optional<std::vector<std::string>> Config::preset(const std::string& name) const {
@@ -104,7 +126,17 @@ void Config::save() const {
     for (const auto& [name, tokens] : presets_) {
         presets_json[name] = tokens;
     }
-    const nlohmann::json j{{"presets", std::move(presets_json)}};
+    nlohmann::json update_json{
+        {"check_interval_hours", update_.check_interval_hours},
+        {"last_check", update_.last_check},
+        {"last_run_version", update_.last_run_version},
+        {"pending_version", update_.pending_version},
+        {"pending_notes", update_.pending_notes},
+        {"pending_error", update_.pending_error},
+        {"repo", update_.repo},
+    };
+    const nlohmann::json j{{"presets", std::move(presets_json)},
+                           {"update", std::move(update_json)}};
 
     const std::filesystem::path p(path_);
     if (p.has_parent_path()) {

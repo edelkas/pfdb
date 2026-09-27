@@ -50,9 +50,22 @@ void glfw_error(int error, const char* description) {
     std::fprintf(stderr, "GLFW error %d: %s\n", error, description);
 }
 
+#ifndef PFDB_VERSION
+#define PFDB_VERSION "0.0.0-dev"
+#endif
+
 }  // namespace
 
 int main(int argc, char** argv) {
+    // Answer --version without opening a window; the self-update sanity check
+    // runs `pfdb-gui --version` on a freshly downloaded build.
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "--version") {
+            std::printf("pfdb-gui %s\n", PFDB_VERSION);
+            return 0;
+        }
+    }
+
     glfwSetErrorCallback(glfw_error);
     if (glfwInit() == 0) {
         std::fprintf(stderr, "pfdb-gui: failed to initialize GLFW\n");
@@ -89,7 +102,7 @@ int main(int argc, char** argv) {
         // is still current (before shutdown below).
         pfdb::gui::App app(db, config);
 
-        while (glfwWindowShouldClose(window) == 0) {
+        while (glfwWindowShouldClose(window) == 0 && !app.wants_quit()) {
             glfwPollEvents();
             if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) {
                 glfwWaitEventsTimeout(0.1);

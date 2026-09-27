@@ -212,6 +212,27 @@ Remove a film by id (cascades to its credits, ratings, etc.).
 pfdb remove --db mycollection.db 3
 ```
 
+### `pfdb upgrade`
+
+Check GitHub Releases for a newer PFDB and install it (both `pfdb` and
+`pfdb-gui`). The download is verified by size + SHA-256 and version-checked before
+the swap; see [updating.md](updating.md) for the full pipeline.
+
+| Option | Description |
+|---|---|
+| `--check` | Only report whether an update is available; don't install. |
+| `--yes`, `-y` | Install without the confirmation prompt. |
+| `--interval <hours>` | Set how often to auto-check (`0` disables); saves and exits. |
+
+```sh
+pfdb upgrade --check          # is there a newer version?
+pfdb upgrade                  # install it (asks first)
+pfdb upgrade --interval 24    # auto-check once a day
+```
+
+Every command also does a throttled, notify-only check (default once a day) and
+prints a one-line notice to stderr when a newer version exists.
+
 ## Exit codes
 
 | Code | Meaning |

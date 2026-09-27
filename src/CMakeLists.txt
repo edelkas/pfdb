@@ -8,6 +8,7 @@ add_library(pfdb_core STATIC
     io/film_json.cpp
     io/csv.cpp
     io/field_set.cpp
+    io/zip.cpp
     io/emdb/emdb_decode.cpp
     io/emdb/emdb_parser.cpp
     io/emdb/emdb_map.cpp
@@ -15,6 +16,10 @@ add_library(pfdb_core STATIC
     app/import.cpp
     app/cover.cpp
     app/player.cpp
+    app/version.cpp
+    app/platform.cpp
+    app/update.cpp
+    util/sha256.cpp
     media/mediainfo.cpp
     query/field.cpp
     query/filter.cpp
@@ -52,12 +57,15 @@ target_link_libraries(pfdb_core
         lexbor::lexbor
         mediainfo
         zen
+        miniz
         pfdb_warnings
         $<$<PLATFORM_ID:Windows>:shell32>
 )
 
-# Project version is made available to the code as a macro.
-target_compile_definitions(pfdb_core PUBLIC PFDB_VERSION="${PROJECT_VERSION}")
+# Project version and build date are made available to the code as macros.
+target_compile_definitions(pfdb_core PUBLIC
+    PFDB_VERSION="${PROJECT_VERSION}"
+    PFDB_BUILD_DATE="${PFDB_BUILD_DATE}")
 
 # ---------------------------------------------------------------------------
 # pfdb_cli: the command-line front-end.
@@ -91,6 +99,7 @@ add_executable(pfdb_gui
     gui/detail_view.cpp
     gui/add_modal.cpp
     gui/filter_modal.cpp
+    gui/update_view.cpp
 )
 
 set_target_properties(pfdb_gui PROPERTIES OUTPUT_NAME pfdb-gui)

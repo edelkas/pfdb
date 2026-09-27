@@ -56,8 +56,13 @@ begins. Later milestones are re-planned in detail as they're reached.
   Background-threaded networking. See [gui.md](gui.md). (First draft; country
   column deferred.)
 
-- **M8 — Packaging & auto-update**
-  GitHub Releases packaging and self-update from within the app.
+- **M8 — Packaging & auto-update** *(current)*
+  GitHub Releases packaging (per-platform zip + a JSON manifest) and self-update
+  from within the app: a semver-aware check against the latest release, integrity
+  verification (size + SHA-256), a version-checked in-place swap that survives
+  Windows' locked-DLL restriction, and a first-run notes/error modal. `pfdb
+  upgrade` (CLI) and a toolbar button (GUI); a throttled, notify-only auto-check
+  (default daily). See [updating.md](updating.md).
 
 ## Design commitments carried throughout
 

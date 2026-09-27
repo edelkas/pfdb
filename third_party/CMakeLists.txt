@@ -23,3 +23,10 @@ target_include_directories(imgui PUBLIC
 
 # The GLFW backend includes <GLFW/glfw3.h>, so imgui needs GLFW's headers/lib.
 target_link_libraries(imgui PUBLIC glfw)
+
+# ---------------------------------------------------------------------------
+# miniz: a single-file, public-domain DEFLATE/zip library. Used by the update
+# service to unpack downloaded release archives. Compiled as C.
+# ---------------------------------------------------------------------------
+add_library(miniz STATIC miniz/miniz.c)
+target_include_directories(miniz PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/miniz)

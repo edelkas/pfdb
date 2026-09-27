@@ -134,19 +134,54 @@ int main(int argc, char** argv) {
     auto* play = app.add_subcommand("play", "Open a film's video file in the default player");
     play->add_option("id", play_id, "Film id to play")->required();
 
+    // --- upgrade ---
+    UpgradeArgs upgrade_args;
+    auto* upgrade = app.add_subcommand("upgrade", "Check for and install a newer PFDB release");
+    upgrade->add_flag("--check", upgrade_args.check_only,
+                      "Only report whether an update is available; do not install");
+    upgrade->add_flag("--yes,-y", upgrade_args.yes,
+                      "Install without prompting for confirmation");
+    upgrade->add_option("--interval", upgrade_args.interval,
+                        "Set how often (hours) to auto-check for updates (0 disables)");
+
+    // --- __apply-update (hidden swapper step; not for direct use) ---
+    ApplyUpdateArgs apply_args;
+    auto* apply_update = app.add_subcommand("__apply-update", "")->group("");
+    apply_update->add_option("--from", apply_args.from)->required();
+    apply_update->add_option("--to", apply_args.to)->required();
+    apply_update->add_option("--wait-pid", apply_args.wait_pid)->required();
+    apply_update->add_option("--relaunch", apply_args.relaunch)->required();
+    apply_update->add_option("--new-version", apply_args.version);
+    apply_update->add_option("--notes-file", apply_args.notes_file);
+    apply_update->add_option("--config", apply_args.config_path);
+
     // --- remove ---
     pfdb::Id remove_id = pfdb::kInvalidId;
     auto* remove = app.add_subcommand("remove", "Remove a film by id");
     remove->add_option("id", remove_id, "Film id to remove")->required();
 
     // Let global options given after the subcommand fall through to the parent.
-    for (auto* sub :
-         std::array{init, add, search, update, list, import, scan, cover, play, remove}) {
+    for (auto* sub : std::array{init, add, search, update, list, import, scan, cover,
+                                play, remove, upgrade}) {
         sub->fallthrough();
     }
 
     CLI11_PARSE(app, argc, argv);
 
+    // The hidden swapper runs standalone (no DB, no startup hooks).
+    if (apply_update->parsed()) {
+        return cmd_apply_update(apply_args);
+    }
+
+    // On every real command, finalize a pending update and (when due) notify of a
+    // newer version. Skipped for `upgrade` itself to avoid a duplicate check.
+    if (!upgrade->parsed()) {
+        run_startup_update_hooks(gopts);
+    }
+
+    if (upgrade->parsed()) {
+        return cmd_upgrade(gopts, upgrade_args);
+    }
     if (init->parsed()) {
         return cmd_init(gopts);
     }

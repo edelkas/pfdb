@@ -11,6 +11,10 @@
 # vcpkg
 /vcpkg_installed/
 
+# Release packaging output (tools/make_release.py) and its runtime staging dir
+/dist/
+/pfdb-update/
+
 # Local databases / scratch
 *.db
 *.db-journal

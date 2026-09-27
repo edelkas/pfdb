@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "app/config.hpp"
+#include "app/update.hpp"
 #include "db/repository.hpp"
 #include "gui/async.hpp"
 #include "gui/texture.hpp"
@@ -58,6 +59,35 @@ struct UpdateOutcome {
     std::string error;
 };
 
+/// Result of the background "check for updates" job.
+struct UpdateCheckOutcome {
+    bool available = false;
+    std::string version;
+    std::string notes;
+    std::string error;
+};
+
+/// Result of the background "download + verify + unpack" job.
+struct UpdateApplyOutcome {
+    bool ok = false;
+    app::PreparedUpdate prepared;  // valid when ok
+    std::string error;
+};
+
+/// Self-update UI state: what a check found, an in-progress apply, and the
+/// one-shot post-update result modal shown on the first run after a swap.
+struct UpdateUiState {
+    bool available = false;         // a newer version was found
+    std::string version;
+    std::string notes;
+    std::string status;             // transient status line in the toolbar
+    bool applying = false;          // an apply job is running
+    bool show_available = false;    // "Update available" modal open
+    bool show_result = false;       // post-update result modal open
+    bool result_ok = false;
+    std::string result_text;
+};
+
 // --- Modal state ---
 
 struct AddState {
@@ -101,6 +131,9 @@ public:
     /// Whether dark theme is active (main.cpp applies the ImGui style).
     bool dark_theme() const { return dark_; }
 
+    /// True once the app has asked to quit (e.g. to hand off to the updater).
+    bool wants_quit() const { return quit_; }
+
 private:
     // --- data ---
     db::Repository repo_;
@@ -134,6 +167,13 @@ private:
     Job<FetchOutcome> add_job_;
     Job<UpdateOutcome> update_job_;
 
+    // --- self-update ---
+    UpdateUiState app_update_;
+    Job<UpdateCheckOutcome> update_check_job_;
+    Job<UpdateApplyOutcome> update_apply_job_;
+    bool auto_checked_ = false;  // interval auto-check launched this session
+    bool quit_ = false;          // set to hand off to the updater and exit
+
     // --- core (app.cpp) ---
     void apply_theme();
     void reload_model();
@@ -149,6 +189,13 @@ private:
     void draw_settings_modal();
     void draw_about_modal();
     void poll_jobs();
+
+    // --- self-update (update_view.cpp) ---
+    void start_update_check();       // background check for a newer version
+    void start_update_apply();       // background download/verify/unpack
+    void poll_update_jobs();         // applied on the UI thread
+    void maybe_auto_check();         // interval-based check on first frames
+    void draw_update_modals();       // "available" + post-update result modals
 
     // --- views (separate .cpp files) ---
     void draw_table();         // table_view.cpp

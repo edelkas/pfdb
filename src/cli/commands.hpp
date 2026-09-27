@@ -101,6 +101,24 @@ struct PresetArgs {
     std::string fields;  // for `set`
 };
 
+/// Fields accepted by `pfdb upgrade`.
+struct UpgradeArgs {
+    bool check_only = false;         // --check: report only, do not apply
+    bool yes = false;                // --yes: skip the confirmation prompt
+    std::optional<int> interval;     // --interval <hours>: set + save the cadence
+};
+
+/// Fields for the hidden `pfdb __apply-update` swapper subcommand.
+struct ApplyUpdateArgs {
+    std::string from;         // staging/unpacked directory
+    std::string to;           // install directory
+    long wait_pid = 0;        // process to wait for before swapping
+    std::string relaunch;     // "cli" | "gui" | "none"
+    std::string version;      // version being installed
+    std::string notes_file;   // file holding the update notes
+    std::string config_path;  // where to record the pending result
+};
+
 int cmd_init(const GlobalOptions& opts);
 int cmd_add(const GlobalOptions& opts, const AddArgs& args);
 int cmd_list(const GlobalOptions& opts, const ListArgs& args);
@@ -112,5 +130,13 @@ int cmd_preset(const GlobalOptions& opts, const PresetArgs& args);
 int cmd_scan(const GlobalOptions& opts, const ScanArgs& args);
 int cmd_cover(const GlobalOptions& opts, const CoverArgs& args);
 int cmd_play(const GlobalOptions& opts, Id id);
+int cmd_upgrade(const GlobalOptions& opts, const UpgradeArgs& args);
+int cmd_apply_update(const ApplyUpdateArgs& args);
+
+/// Run once at startup, before dispatching a subcommand: finalize any pending
+/// self-update (surface its notes/error, clean up `.old` files) and, when the
+/// configured interval has elapsed, quietly check for a newer version and print
+/// a one-line notice. Never throws; network failures are silent.
+void run_startup_update_hooks(const GlobalOptions& opts);
 
 }  // namespace pfdb::cli

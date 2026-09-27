@@ -1,0 +1,83 @@
+name: Release
+
+# Publishing a Release: push a tag like `v0.2.0`. This builds PFDB, packages the
+# executables + runtime DLLs into a per-platform zip, generates the update
+# manifest, and attaches both to the GitHub Release the tag creates.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (without leading v), e.g. 0.2.0"
+        required: true
+
+permissions:
+  contents: write  # needed to create/update the Release and upload assets
+
+jobs:
+  release-windows:
+    name: Package (Windows / MSVC)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up MSVC developer environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Cache vcpkg binary packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.LOCALAPPDATA }}\vcpkg\archives
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'CMakePresets.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      - name: Configure (Release)
+        run: cmake --preset windows-msvc -DCMAKE_BUILD_TYPE=Release -DPFDB_BUILD_TESTS=OFF
+
+      - name: Build
+        run: cmake --build build/windows-msvc
+
+      - name: Stage install (exes + DLLs)
+        shell: pwsh
+        run: |
+          $src = "build/windows-msvc/src"
+          $stage = "stage"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item "$src/pfdb.exe","$src/pfdb-gui.exe" $stage
+          Get-ChildItem "$src/*.dll" | Copy-Item -Destination $stage
+
+      - name: Package + manifest
+        shell: bash
+        run: |
+          notes_arg=""
+          if [ -f RELEASE_NOTES.md ]; then notes_arg="--notes-file RELEASE_NOTES.md"; fi
+          python tools/make_release.py \
+            --install-dir stage \
+            --version "${{ steps.ver.outputs.version }}" \
+            --platform windows-x64 \
+            --out-dir dist \
+            $notes_arg
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          files: |
+            dist/pfdb-*-windows-x64.zip
+            dist/manifest.json

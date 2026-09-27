@@ -1,8 +1,9 @@
 # Configuration & field presets
 
 PFDB keeps user-level configuration in a small JSON file, separate from any
-collection database so it is shared across collections. Today it stores **field
-presets** used by import and CSV export.
+collection database so it is shared across collections. It stores **field
+presets** used by import and CSV export, and **self-update settings** (see
+[updating.md](updating.md)).
 
 ## Location
 
@@ -55,3 +56,27 @@ pfdb list --csv --preset mine
 ```
 
 `--fields <tokens>` is the ad-hoc equivalent and overrides `--preset`.
+
+## Update settings
+
+The `update` block controls the self-updater ([updating.md](updating.md)):
+
+```json
+{
+  "update": {
+    "check_interval_hours": 24,
+    "last_check": 1700000000,
+    "last_run_version": "0.1.0",
+    "repo": "edelkas/pfdb"
+  }
+}
+```
+
+- **`check_interval_hours`** — how often to auto-check for a newer release
+  (`0` disables it). Set it with `pfdb upgrade --interval <hours>` or the GUI's
+  Settings dialog.
+- **`last_check`** — Unix time of the last check (managed automatically).
+- **`last_run_version`** / `repo` — bookkeeping for first-run detection after a
+  swap and the GitHub `owner/name` releases are pulled from. The updater also
+  writes short-lived `pending_*` fields here between a swap and the next launch;
+  they are cleared once the result modal has been shown.
